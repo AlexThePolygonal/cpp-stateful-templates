@@ -1,0 +1,59 @@
+CLANG
+In file included from main.cpp:1:
+./cexpr_lib.hpp:54:24: fatal error: recursive template instantiation exceeded maximum depth of 30
+   54 |                 return ctstd::naive_declval<Containter<Val>>(); // The return type is the value of T
+      |                        ^
+./cexpr_lib.hpp:87:32: note: in instantiation of member function 'type_var::detail::flag' requested here
+   87 |             class U = decltype(flag(Flag<T, N>{}))
+      |                                ^
+./cexpr_lib.hpp:89:24: note: in instantiation of default argument for 'load_reader<type_var::detail::Addr<recursion_tests::a>, 13, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52)>' required here
+   89 |         constexpr auto load_reader(int) {
+      |                        ^~~~~~~~~~~~~~~~~~
+   90 |             using Res = decltype(load_reader<T, N+1, _>(int{}));
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   91 |             return ctstd::conditional_using<std::is_same_v<Res, detail::Containter<ctstd::None>>, U, Res>{};
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   92 |         }
+      |         ~
+./cexpr_lib.hpp:90:34: note: while substituting deduced template arguments into function template 'load_reader' [with T = type_var::detail::Addr<recursion_tests::a>, N = 13, _ = recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), U = (no value)]
+   90 |             using Res = decltype(load_reader<T, N+1, _>(int{}));
+      |                                  ^
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 12, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 11, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 10, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 9, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 8, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 7, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 6, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 5, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 4, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 3, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 2, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:90:34: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 1, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Succ<peano::Zero>>>' requested here
+./cexpr_lib.hpp:112:45: note: in instantiation of function template specialization 'type_var::detail::load_reader<type_var::detail::Addr<recursion_tests::a>, 0, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52), type_var::detail::Containter<peano::Zero>>' requested here
+  112 |         class R = typename decltype(detail::load_reader<detail::Addr<T>, 0, _>(int{}))::value
+      |                                             ^
+main.cpp:312:28: note: in instantiation of default argument for 'value<a, recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52)>' required here
+  312 |                 peano::add<value<a, _>, value<b>>, _
+      |                            ^~~~~~~~~~~
+main.cpp:330:23: note: in instantiation of template class 'recursion_tests::SumOfFirstNIntegers<recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>::(lambda at main.cpp:330:52)>' requested here
+  330 |     struct DoWhileI : SumOfFirstNIntegers<decltype([](){})>, DoWhileI<
+      |                       ^
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 12>' requested here
+  330 |     struct DoWhileI : SumOfFirstNIntegers<decltype([](){})>, DoWhileI<
+      |                                                              ^
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 11>' requested here
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 10>' requested here
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 9>' requested here
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 8>' requested here
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 7>' requested here
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 6>' requested here
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 5>' requested here
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 4>' requested here
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 3>' requested here
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 2>' requested here
+main.cpp:330:62: note: in instantiation of template class 'recursion_tests::DoWhileI<ctstd::True, recursion_tests::(lambda at main.cpp:322:28), 1>' requested here
+main.cpp:344:15: note: in instantiation of template class 'recursion_tests::DoWhileI<>' requested here
+  344 |     run_line: DoWhileI<> {};
+      |               ^
+1 error generated.
