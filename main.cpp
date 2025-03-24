@@ -1,9 +1,10 @@
 #include "cexpr_lib.hpp"
 #include "peano.hpp"
 #include <iostream>
+#include <array>
 
-#define run_line template <> struct __run_line<decltype([](){})> 
-
+#define run_line template <> struct __run_line<decltype([](){})>
+#define VALUE(T) type_var::value<T, decltype([](){})>
 
 // here we are going to test whether the assignment mechanism works well
 namespace basic_tests {
@@ -303,41 +304,45 @@ namespace recursion_tests {
     run_line : Assign<loop_cnt, peano::Zero> {};
 
 
+    template <int N>
+    struct Wrap {
+        static constexpr int val = N;
+    };
+
+
     template <class _ = decltype([](){})>
     struct SumOfFirstNIntegers :
             Assign<a, 
-                peano::Succ<value<a>>, _
+                peano::Succ<value<a, decltype([](){})>>, _
             >,
-            Assign<b, 
-                peano::add<value<a, _>, value<b>>, _
-            >,
-            Assign<c, 
-                peano::leq<value<a, _>, peano::Two>, _
+            Assign<c,
+                peano::leq<value<a, _>, peano::One>, _
             >
-        {
-        };
+    {
+        using tp = std::array<int, _::val>;
+    };
 
         template <
         class spec_cond = ctstd::True, 
-        class _ = decltype([](){}), unsigned N = 0
+        class _ = decltype([](){}), unsigned N = 0, class print=void
     >
     struct DoWhileI;
 
     template <
         class spec_cond, 
-        class _, unsigned N
+        class _, unsigned N, class print
     >
-    struct DoWhileI : SumOfFirstNIntegers<decltype([](){})>, DoWhileI<
+    struct DoWhileI : SumOfFirstNIntegers<Wrap<N>>::tp, DoWhileI<
                     type_var::value<c, decltype([](){})>, 
-                    _, N+1
-                >, Assign<loop_cnt, peano::Integer<N>, _>
+                    _, N+1, value<a, decltype([](){})>
+                >, Assign<loop_cnt, decltype([](){}), _>
         {    
         };
     
     template <
-        class _, unsigned N
+        class _, unsigned N, class print
     >
-    struct DoWhileI<ctstd::False, _, N> {
+    struct DoWhileI<ctstd::False, _, N, print> {
         using next_iteration = ctstd::None;
     };
 
@@ -345,14 +350,6 @@ namespace recursion_tests {
 
 
     static_assert(std::is_same_v<value<a>, peano::Four>);
-    // static_assert(std::is_same_v<value<b>, peano::Integer<10>>);
-    // static_assert(std::is_same_v<value<loop_cnt>, peano::One>);
-
-
-    /// TABLE
-    // 3 ↦ 6
-    // 4 ↦ 10
-    // 5 ↦ 15
 };
 
 int main() {

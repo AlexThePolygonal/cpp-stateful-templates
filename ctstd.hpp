@@ -28,7 +28,7 @@ namespace ctstd {
         };
     };
     template <class T, class U>
-    using is_same = detail::is_same_impl<T, U>::value;
+    using is_same = typename detail::is_same_impl<T, U>::value;
 
 
     template <class T>

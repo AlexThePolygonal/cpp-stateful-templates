@@ -184,7 +184,7 @@ namespace cexpr_control {
     struct DoWhile : 
             func:: template call<args, detail::Pair<_, detail::WrapInt<N>>> 
         {   
-            using next_iteration = DoWhile<
+            using next_iteration = typename DoWhile<
                     func, args, 
                     stopcond,
                     type_var::value<stopcond, detail::Pair<_, detail::WrapInt<N>>>, 
