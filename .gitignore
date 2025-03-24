@@ -3,7 +3,7 @@ tmp.*
 *.tmp
 *.temp
 .*
-.vscode
-/.vscode
+.vscode/**
+/.vscode/**
 temp.txt
 !.gitignore
