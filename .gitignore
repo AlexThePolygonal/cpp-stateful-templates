@@ -1,6 +1,7 @@
-temp*
-tmp*
+temp.*
+tmp.*
 *.tmp
 *.temp
 .*
 temp.txt
+!.gitignore
