@@ -2,6 +2,5 @@ temp.*
 tmp.*
 *.tmp
 *.temp
-.vscode/settings.json
-temp.txt
+*.vscode/settings.json
 !.gitignore
