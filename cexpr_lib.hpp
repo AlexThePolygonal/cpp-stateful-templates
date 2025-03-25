@@ -25,7 +25,9 @@ static_assert(!std::is_same_v<decltype([](){}), decltype([](){})>, "decltype([](
 
 
 /// expect frequent random crashes
-/// Do not forget Wno-non-template-friend
+/// #pragma message "Do not forget Wno-non-template-friend"
+/// #pragma message "All template arguments named _ should receive decltype([](){}) only"
+
 
 namespace type_var {
 
@@ -51,7 +53,7 @@ namespace type_var {
         >
         struct Writer {
             friend constexpr auto flag(Flag<T, N>) {
-                return ctstd::naive_declval<Containter<Val>>(); // The return type is the value of T
+                return Containter<Val>(); // The return type is the value of T
             }
             constexpr static int value = N;
         };
@@ -95,20 +97,20 @@ namespace type_var {
     // Assign the value Val to the type T
     template<
         class T, class Val,
-        class _ = decltype([](){}), 
+        class _, 
         int = detail::assign_reader<detail::Addr<T>, Val, 0, _>(int{})
     >
     struct Assign {};
 
     template <class T> struct Assignment {
-        template <class U, class _ = decltype([](){})> struct call : Assign<T, U, _> {};
+        template <class U, class _> struct call : Assign<T, U, _> {};
     };
 
 
 
     // Get the value assigned to T
     template <
-        class T, class _ = decltype([](){}),
+        class T, class _,
         class R = typename decltype(detail::load_reader<detail::Addr<T>, 0, _>(int{}))::value
     >
     using value = R;
@@ -158,46 +160,44 @@ namespace cexpr_control {
     };
     // If v is true, call Func(ArgsIfTrue)
     // If v is false, call Fun(ArgsIfTrue)
-    template <class v, class Func, class ArgsIfTrue, class ArgsIfFalse, class _ =decltype([](){})>
+    template <class v, class Func, class ArgsIfTrue, class ArgsIfFalse, class _>
     using if_else = typename detail::IfElseImpl<v, Func, ArgsIfTrue, ArgsIfFalse, _>::Res;
 
-    template <class v, class Func, class Args, class _ =decltype([](){})>
+    template <class v, class Func, class Args, class _>
     using if_ = typename detail::IfImpl<v, Func, Args, _>::Res;
-
 
 
 
     template <
         class func, class args,
-        class stopcond, 
-        class spec_cond = ctstd::True, 
-        class _ = decltype([](){}), unsigned N = 0
+        class stopcond,
+        class _,
+        unsigned N = 0,
+        class speccond = ctstd::True
     >
     struct DoWhile;
 
     template <
         class func, class args,
-        class stopcond, 
-        class spec_cond, 
-        class _, unsigned N
-    >
-    struct DoWhile : 
-            func:: template call<args, detail::Pair<_, detail::WrapInt<N>>> 
-        {   
-            using next_iteration = typename DoWhile<
-                    func, args, 
-                    stopcond,
-                    type_var::value<stopcond, detail::Pair<_, detail::WrapInt<N>>>, 
-                    _, N+1
-                >::next_iteration;
-        };
+        class stopcond,
+        class _,
+        unsigned N,
+        class speccond
+    > 
+    struct DoWhile: 
+        func:: template call<args, detail::Pair<_, detail::WrapInt<N>>>,
+        DoWhile<
+            func, args,
+            type_var::value<stopcond, detail::Pair<_, detail::WrapInt<N>>>,
+            _, N+1
+        > 
+    {};
+
     
     template <
         class func, class args,
         class stopcond, 
         class _, unsigned N
     >
-    struct DoWhile<func, args, stopcond, ctstd::False, _, N> {
-        using next_iteration = ctstd::None;
-    };
+    struct DoWhile<func, args, stopcond, _, N, ctstd::False> {};
 };

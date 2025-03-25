@@ -32,5 +32,11 @@ You would expect that the compiler processes the template parent classes sequent
 
 So it goes.
 
-### Folded using orders
+### Default arguments are cached
 
+*Obviously*, in
+```cpp
+template <class _ = decltype([](){})>
+```
+the default argument stays the same in different instantiations
+So we always have to write `decltype([](){})` explicitly to force reinstantiations.
