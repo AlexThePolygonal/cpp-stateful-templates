@@ -145,7 +145,9 @@ namespace cexpr_control {
             class v, 
             class Func, class ... Args
             >
-        struct IfImpl {};
+        struct IfImpl {
+            using Res = ctstd::None;
+        };
 
         template <class Func, class ... Args>
         struct IfImpl<ctstd::True, Func, Args...> {
@@ -166,10 +168,8 @@ namespace cexpr_control {
     template <class v, class Func, class Args, class _>
     using if_ = typename detail::IfImpl<v, Func, Args, _>::Res;
 
-
-
     template <
-        class func, class args,
+        class func,
         class stopcond,
         class _,
         unsigned N = 0,
@@ -178,26 +178,31 @@ namespace cexpr_control {
     struct DoWhile;
 
     template <
-        class func, class args,
+        class func,
         class stopcond,
         class _,
         unsigned N,
         class speccond
     > 
     struct DoWhile: 
-        func:: template call<args, detail::Pair<_, detail::WrapInt<N>>>,
+        func:: template call<
+            detail::Pair<_, detail::WrapInt<N>>
+        >,
         DoWhile<
-            func, args,
-            type_var::value<stopcond, detail::Pair<_, detail::WrapInt<N>>>,
-            _, N+1
+            func, 
+            stopcond, 
+            _,
+            N+1,             
+            typename type_var::value<stopcond, detail::Pair<_, detail::WrapInt<N>>>
         > 
     {};
 
     
     template <
-        class func, class args,
+        class func,
         class stopcond, 
-        class _, unsigned N
+        class _, 
+        unsigned N
     >
-    struct DoWhile<func, args, stopcond, _, N, ctstd::False> {};
+    struct DoWhile<func, stopcond, _, N, ctstd::False> {};
 };

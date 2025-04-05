@@ -15,7 +15,24 @@ namespace ctstd {
     struct None {};
 
     struct True {};
-    struct False {};    
+    struct False {};
+
+    namespace detail {
+        template <class T>
+        struct NotImpl {};
+
+        template <>
+        struct NotImpl<True> {
+            using value = False;
+        };
+        template <>
+        struct NotImpl<False> {
+            using value = True;
+        };
+    };
+
+    template <class T>
+    using Not = typename detail::NotImpl<T>::value;
 
     namespace detail {
         template <class T, class U>

@@ -1,6 +1,12 @@
+# Bjarne Stroustrup, I apologize for what I have done.
+
+<!-- imperative template language-->
+
+
+
 ### DEVLOG HELLWORLD
 
-Блять, какой же пиздец нахуй. Ну я сам выбрал ломать компилятор.
+Эх, какой же кошмар, чёрт меня раздери. Ну я сам выбрал ломать компилятор.
 
 #### Premature instantiation of templates with dummy parameters  
 

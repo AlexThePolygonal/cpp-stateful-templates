@@ -2,11 +2,11 @@
 # compile debug
 
 
-echo "GCC"
-g++-14 -std=c++20 -O0 -Wno-non-template-friend -ftemplate-depth=30 -ftemplate-backtrace-limit=0 main.cpp -o __run__
+# echo "GCC"
+# g++-14 -std=c++20 -O0 -Wno-non-template-friend -ftemplate-depth=100 -ftemplate-backtrace-limit=0 main.cpp -o __run__
 
 echo "CLANG"
-clang++-19 -std=c++20 -O0 -ftemplate-depth=30 -ftemplate-backtrace-limit=0 main.cpp -o __run__
+clang++-19 -std=c++20 -O0 -ftemplate-depth=1000 -ftemplate-backtrace-limit=0 main.cpp -o __run__
 
 endl=""
 args=""

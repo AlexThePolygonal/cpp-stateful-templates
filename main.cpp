@@ -12,7 +12,10 @@ namespace basic_tests {
     template <class> struct __run_line {};
 
     struct a {};
-    static_assert(std::is_same_v<value<a, RE>, ctstd::None>, "the value of initialized variable must be None");
+    static_assert(std::is_same_v<
+            value<a, RE>, 
+            ctstd::None
+        >, "the value of initialized variable must be None");
 
     run_line : Assign<a, a, RE> {};
     static_assert(std::is_same_v<value<value<value<a, RE>, RE>, RE>, a>, "the value of a variable can be the variable name itself");
@@ -54,6 +57,8 @@ namespace cexpr_control_tests {
     run_line : if_<True, Assignment<a>, float, RE> {};
     run_line : if_<True, Assignment<a>, double, RE> {};
     run_line : if_<True, Assignment<a>, float, RE> {};
+    run_line : if_<False, Assignment<a>, int, RE> {};
+
 
     static_assert(std::is_same_v<value<a, RE>, float>);
 
@@ -61,13 +66,9 @@ namespace cexpr_control_tests {
 
     run_line : if_else<True, Assignment<b>, float, bool, RE> {};
     run_line : if_else<True, Assignment<b>, double, bool, RE> {};
-    run_line : if_else<True, Assignment<b>, float, bool, RE> {};
+    run_line : if_else<False, Assignment<b>, bool, float, RE> {};
 
     static_assert(std::is_same_v<value<b, RE>, float>);
-
-    struct c {};
-    struct d {};
-
 };
 
 namespace inheritance_order_tests {
@@ -78,7 +79,9 @@ namespace inheritance_order_tests {
     template <class> struct __run_line {};
 
     struct a {};
+
     run_line : Assign<a, unsigned, RE>, Assign<a, int, RE> {};
+
     static_assert(std::is_same_v<value<a, RE>, int>);
 
     run_line: 
@@ -105,9 +108,9 @@ namespace inheritance_order_tests {
 #endif
 
     run_line:
-        Delayed<Assignment<b>>::call<short, decltype([](){})>, 
-        Delayed<Delayed<Assignment<b>>>::call<int, decltype([](){})>,
-        Delayed<Assignment<b>>::call<long, decltype([](){})>
+        Delayed<Assignment<b>>::call<short, RE>, 
+        Delayed<Delayed<Assignment<b>>>::call<int, RE>,
+        Delayed<Assignment<b>>::call<long, RE>
     {};
     static_assert(std::is_same_v<value<b, RE>, long>);
 
@@ -124,12 +127,18 @@ namespace inheritance_order_tests {
     struct g {};
     struct h {};
 
+    run_line : Assign<g, int, RE> {};
+
     run_line:
         Delayed<Assignment<g>>:: template call<float, RE>,
         Assign<h, value<g, RE>, RE>
     {};
 
-    static_assert(std::is_same_v<value<e, RE>, float>);
+#ifdef __clang__
+    static_assert(std::is_same_v<value<h, RE>, float>);
+#elif __GNUG__
+    static_assert(std::is_same_v<value<h, RE>, int>);
+#endif
 
     struct i {};
     struct j {};
@@ -286,7 +295,7 @@ namespace mixed_order_test {
     static_assert(std::is_same_v<value<e, RE>, float>);
 };
 
-namespace recursion_tests {
+namespace recursion_test_1 {
     using namespace type_var;
     using namespace cexpr_control;
 
@@ -330,7 +339,10 @@ namespace recursion_tests {
         class spec_cond, 
         class _, unsigned N, class print
     >
-    struct DoWhileI : SumOfFirstNIntegers<RE>, DoWhileI<
+    struct DoWhileI : SumOfFirstNIntegers<
+                        ::cexpr_control::detail::Pair<
+                            ::cexpr_control::detail::WrapInt<N>, _>
+                        >, DoWhileI<
                     type_var::value<c, RE>, 
                     _, N+1, value<a, RE>
                 >, Assign<loop_cnt, peano::Integer<N>, _>
@@ -346,11 +358,98 @@ namespace recursion_tests {
 
     run_line: DoWhileI<> {};
 
-    // Here GCC short-circuits the evaluations of value<a> inside the SumOfFirstNIntegers
-    // While good boy Clang doesn't
+
+#ifdef __clang__
     static_assert(std::is_same_v<value<a, RE>, peano::Four>);
+#elif __GNUG__
+    static_assert(std::is_same_v<value<a, RE>, peano::Five>);
+#endif
 }
 
+namespace recursion_test_2 {
+    using namespace type_var;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    struct b {};
+    struct c {};
+    run_line : Assign<a, peano::Zero, RE> {};
+    run_line : Assign<b, peano::Zero, RE> {};
+    run_line : Assign<c, ctstd::True, RE> {};
+
+
+    struct SumOfFirstIntegers {
+        template <class _>
+        struct call : 
+            Assign<a, 
+                peano::Succ<value<a, RE>>, RE
+            >,
+            Assign<b,
+                peano::add<value<b, RE>, value<a, RE>>, RE 
+            >,
+            Assign<c,
+                peano::leq<value<a, RE>, peano::Five>, RE
+            >
+        {};
+    };
+
+    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
+
+#ifdef __clang__
+    static_assert(std::is_same_v<value<b, RE>, peano::Integer<21>>);
+#elif __GNUG__
+    static_assert(std::is_same_v<value<b, RE>, peano::Integer<28>>);
+#endif
+}
+
+namespace big_recursion_test {
+    using namespace type_var;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    struct b {};
+    struct c {};
+
+    run_line: Assign<a, peano::Seven, RE> {};
+    // 5 > 16 > 8 > 4 > 2 > 1
+    // 7 > 22 > 11 > 34 > 17 > 52 > 26 > 13 > 40 > 20 > 10 > 5 > 16 > 8 > 4 > 2 > 1
+    run_line: Assign<b, peano::Zero, RE> {};
+    run_line: Assign<c, ctstd::True, RE> {};
+
+    struct CollatzStep {
+        template <class _>
+        struct call :
+            if_else<
+                ctstd::is_same<
+                    peano::remainder<
+                        value<a, RE>, peano::Two
+                    >, 
+                    peano::Zero
+                >,
+                Assignment<a>,
+                peano::div<
+                    value<a, RE>, peano::Two
+                >,
+                peano::Succ<peano::mult<
+                    value<a, RE>, peano::Three
+                >>,
+                RE
+            >,
+            Assign<b, peano::Succ<value<b, RE>>, RE>,
+            Assign<c, ctstd::Not<ctstd::is_same<value<a, RE>, peano::One>>, RE>
+        {};
+    };
+
+    run_line: ::cexpr_control::DoWhile<CollatzStep, c, RE> {};
+    static_assert(std::is_same_v<value<a, RE>, peano::Integer<1>>);
+    static_assert(std::is_same_v<value<b, RE>, peano::Integer<16>>);
+
+};
+
 int main() {
-    // std::cout << typeid(type_var::value<recursion_tests::a, RE>).name() << std::endl;
+    // std::cout << typeid(type_var::value<big_recursion_test::b, RE>).name() << std::endl;
 }
