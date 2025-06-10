@@ -22,25 +22,22 @@ namespace basic_tests {
     static_assert(std::is_same_v<value<value<value<a, RE>, RE>, RE>, a>, "the value of a variable can be the variable name itself");
 
     run_line : Assign<a, void, RE> {};
-    static_assert(std::is_same_v<value<a, RE>, void>, "the value of a variable can be void");
+    static_assert(std::is_same_v<value<a, RE>, void>, "assignment works with void");
     
     run_line : Assign<a, const int, RE> {};
-    static_assert(std::is_same_v<value<a, RE>, const int>, "the value of a variable can be const int");
+    static_assert(std::is_same_v<value<a, RE>, const int>, "assignment works with const types");
 
     run_line : Assign<a, int&, RE> {};
-    static_assert(std::is_same_v<value<a, RE>, int&>);
+    static_assert(std::is_same_v<value<a, RE>, int&>, "assignment works with reference types");
 
     run_line : Assign<a, Assign<a, unsigned, RE>, RE> {};
-    static_assert(!std::is_same_v<value<a, RE>, unsigned>);
+    static_assert(!std::is_same_v<value<a, RE>, unsigned>, "nested assigments are executed before the outer ones");
 
     run_line : Assign<a, int, RE> {};
     run_line : Assign<a, float, RE> {};
     run_line : Assign<a, int, RE> {};
 
-    static_assert(std::is_same_v<value<a, RE>, int>, "basic sequencing works");
-
-    struct b {};
-    static_assert(std::is_same_v<value<b, RE>, ctstd::None>, "values are initialized to None");
+    static_assert(std::is_same_v<value<a, RE>, int>, "assignments are executed in the order they are written, so the last one is the value of a");
 };
 
 
@@ -223,7 +220,7 @@ namespace using_order_test {
         using _1 = Assign<a, long, RE>;
         using _2 = Assign<a, int, RE>;
     };
-    static_assert(std::is_same_v<value<a, RE>, int>);
+    static_assert(std::is_same_v<value<a, RE>, int>, "templates in using declarations are instantiated in order that they appear");
 
 
     struct b {};
@@ -231,7 +228,7 @@ namespace using_order_test {
         using _2 = Assign<b, int, RE>;
         using _1 = Delayed<Assignment<b>>:: template __call__<long, decltype([](){})>;
     };
-    static_assert(std::is_same_v<value<b, RE>, int>);
+    static_assert(std::is_same_v<value<b, RE>, int>, "the order of template instantiation doesn't depend on the complexity of the templates");
 
     struct c {};
     struct d {};
@@ -242,7 +239,7 @@ namespace using_order_test {
         using _2 = Assign<d, value<c, RE>, RE>;
         using _3 = _1<RE>;
     };
-    static_assert(std::is_same_v<value<d, RE>, ctstd::None>, "the order of the using commands is correct");
+    static_assert(std::is_same_v<value<d, RE>, ctstd::None>, "templates aren't instantiated until they are used");
 
 
     struct e{};
