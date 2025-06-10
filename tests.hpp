@@ -478,6 +478,7 @@ namespace recursion_test_delayed {
     struct a {};
     struct b {};
     struct c {};
+    struct d {};
     run_line : Assign<a, peano::Zero, RE> {};
     run_line : Assign<b, peano::Zero, RE> {};
     run_line : Assign<c, ctstd::True, RE> {};
@@ -490,7 +491,7 @@ namespace recursion_test_delayed {
                 peano::Succ<value<a, RE>>, RE
             >,
             Assign<b,
-                peano::add<value<b, RE>, value<a, RE>>, RE 
+                peano::add<value<b>, value<a, RE>>, RE 
             >,
             Assign<c,
                 peano::leq<value<a, RE>, peano::Five>, RE

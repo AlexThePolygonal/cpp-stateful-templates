@@ -215,9 +215,9 @@ In practice, template instantiation behaves predictably on each compiler. I have
 
 Clang executes all templates in the order that they appear, recursively. First, Clang instantiates the parent classes, then the classes occuring in the body of the class.
 
-GCC behaves in a bizarre way. It behaves identically to Clang, except when instantiating the parent classes of a class, it first does a single pass over the parent template classes, instantiates all of the _simple_ subtemplates, that is, the template arguments which do not have ininstantiated template arguments, then proceeds recursively.
+GCC behaves in a bizarre way. It behaves identically to Clang, except when instantiating parent template classes, it first evaluates all of the """simple""" arguments, then processes the rest sequentially. I was unable to find any way to describe it.
 
-Because of this, functions on gcc are processed bizarrely, which can be seen in the recursive tests.
+Because of this, functions on gcc work weirdly, which can be seen in the recursive tests.
 ```cpp
 struct SumOfFirstIntegers {
     template <class _>
@@ -237,7 +237,11 @@ struct SumOfFirstIntegers {
     {};
 };
 ```
-This function is a single step of the loop which is used to compute the sum of the first 5 integers. `a` is the counter, `b` is the accumulator variable, and `c` is the stopping condition.
+This function is a single step of the loop which is used to compute the sum of the first 5 peano integers. `a` is the counter, `b` is the accumulator variable, and `c` is the stopping condition.
+
+On GCC, the simple templates `value<a, RE>` and `value<b, RE>` are instantiated instantly, all of them before any of the `Assign`s are.
+Because of it, all of the arguments of the assignments have the same value.
+
 
 
 ## Implementation details
