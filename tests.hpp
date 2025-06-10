@@ -491,7 +491,7 @@ namespace recursion_test_delayed {
                 peano::Succ<value<a, RE>>, RE
             >,
             Assign<b,
-                peano::add<value<b>, value<a, RE>>, RE 
+                peano::add<value<b, RE>, value<a, RE>>, RE 
             >,
             Assign<c,
                 peano::leq<value<a, RE>, peano::Five>, RE
