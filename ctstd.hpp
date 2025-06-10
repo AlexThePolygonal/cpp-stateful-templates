@@ -10,29 +10,13 @@ static_assert(__cplusplus >= 202002L);
 
 
 namespace ctstd {
-    // Pythonesque None
-    // The result for ill-formed operations
+
     struct None {};
+
 
     struct True {};
     struct False {};
 
-    namespace detail {
-        template <class T>
-        struct NotImpl {};
-
-        template <>
-        struct NotImpl<True> {
-            using value = False;
-        };
-        template <>
-        struct NotImpl<False> {
-            using value = True;
-        };
-    };
-
-    template <class T>
-    using Not = typename detail::NotImpl<T>::value;
 
     namespace detail {
         template <class T, class U>
@@ -47,6 +31,60 @@ namespace ctstd {
     template <class T, class U>
     using is_same = typename detail::is_same_impl<T, U>::value;
 
+    namespace detail {
+        template <class T>
+        struct NotImpl {};
+
+        template <>
+        struct NotImpl<True> { using value = False; };
+        template <>
+        struct NotImpl<False> { using value = True; };
+
+        template <class T, class U>
+        struct AndImpl {};
+    
+        template <>
+        struct AndImpl<True, True> { using value = True; };
+        template <>
+        struct AndImpl<True, False> { using value = False; };
+        template <>
+        struct AndImpl<False, True> { using value = False; };
+        template <>
+        struct AndImpl<False, False> { using value = False; };
+
+        template <class T, class U>
+        struct OrImpl {};
+        template <>
+        struct OrImpl<True, True> { using value = True; };
+        template <>
+        struct OrImpl<True, False> { using value = True; };
+        template <>
+        struct OrImpl<False, True> { using value = True; };
+        template <>
+        struct OrImpl<False, False> { using value = False; };
+
+        template <class T, class U>
+        struct XorImpl {};
+        template <>
+        struct XorImpl<True, True> { using value = False; };
+        template <>
+        struct XorImpl<True, False> { using value = True; };
+        template <>
+        struct XorImpl<False, True> { using value = True; };
+        template <>
+        struct XorImpl<False, False> { using value = False; };
+    };  
+
+    // Custom logical operations
+
+    template <class T>
+    using Not = typename detail::NotImpl<T>::value;
+    template <class T, class U>
+    using And = typename detail::AndImpl<T, U>::value;
+    template <class T, class U>
+    using Or = typename detail::OrImpl<T, U>::value;
+    template <class T, class U>
+    using Xor = typename detail::XorImpl<T, U>::value;
 
     template <class T>
     [[maybe_unused]] auto remove_nodiscard (T&& t) { return std::forward<T>(t); }
@@ -72,11 +110,6 @@ namespace ctstd {
 
     template <bool v, class T_true, class T_false>
     using conditional_using = typename detail::conditional_using_impl<v, T_true, T_false>::value;
-
-    struct NoneFunc {
-        template <class>
-        struct call {};
-    };
 };
 
 // Basic container for variadic packs
@@ -108,13 +141,20 @@ namespace detail {
 template <template <class ...> class f, class Args>
 using pass_args = typename detail::PassArgpass<f, Args>::value;
 
-namespace detail {
-    template <template <class ...> class f, class ... Args>
-    struct Curry {
-        template <class ... Brgs>
-        using call = f<Args..., Brgs...>;
-    };
+template <template <class ...> class f>
+struct Lambda {
+    template <class ... Args>
+    using __call__ = f<Args...>;
 };
+
+
+// namespace detail {
+//     template <template <class ...> class f, class ... Args>
+//     struct Curry {
+//         template <class ... Brgs>
+//         using __call__ = f<Args..., Brgs...>;
+//     };
+// };
 
 namespace detail {
     template<typename... Args>
@@ -174,21 +214,3 @@ struct Argpass {
 template <class Args> using last = pass_args<detail::pack_last, Args>;
 template <class Args> using first = pass_args<detail::pack_first, Args>;
 template <class Args> using tail = pass_args<detail::pack_tail, Args>;
-
-
-
-// template <template<class...> class Func>
-// struct FuncObj {
-//     template <class Args, class CpsF, class CpsArgs, class = decltype([](){})>
-//     struct call : pass_args<Func, concat<Args, Argpass<CpsF, CpsArgs>>> {};
-
-//     template <class Args, class = decltype([](){})>
-//     struct __call__ : pass_args<Func, Args> {};
-
-
-//     // template <class Argpass>
-//     // struct curry {
-//     //     template <class Brgpass>
-//     //     struct call : pass_args<Func, concat<Argpass, Brgpass>> {};
-//     // };
-// };

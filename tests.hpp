@@ -7,7 +7,7 @@
 #define run_line template <> struct __run_line<decltype([](){})>
 #define RE decltype([](){})
 
-// here we are going to test whether the assignment mechanism works well with all types
+// testing whether the assignment mechanism works well with all types, including the special ones like void, const, references, etc.
 namespace basic_tests {
     using namespace type_var;
     template <class> struct __run_line {};
@@ -37,15 +37,14 @@ namespace basic_tests {
     run_line : Assign<a, float, RE> {};
     run_line : Assign<a, int, RE> {};
 
-    static_assert(std::is_same_v<value<a, RE>, int>, "");
+    static_assert(std::is_same_v<value<a, RE>, int>, "basic sequencing works");
 
     struct b {};
-    static_assert(std::is_same_v<value<b, RE>, ctstd::None>);
-
-    struct c {};
-    run_line : Assign<c, void, RE> {};
+    static_assert(std::is_same_v<value<b, RE>, ctstd::None>, "values are initialized to None");
 };
 
+
+// These tests check whether the control flow expressions if_ and if_else work correctly 
 namespace cexpr_control_tests {
     using namespace ctstd;
     using namespace type_var;
@@ -57,11 +56,11 @@ namespace cexpr_control_tests {
 
     run_line : if_<True, Assignment<a>, float, RE> {};
     run_line : if_<True, Assignment<a>, double, RE> {};
-    run_line : if_<True, Assignment<a>, float, RE> {};
+    run_line : if_<True, Assignment<a>, bool, RE> {};
     run_line : if_<False, Assignment<a>, int, RE> {};
 
 
-    static_assert(std::is_same_v<value<a, RE>, float>);
+    static_assert(std::is_same_v<value<a, RE>, bool>, "if_ works correctly with True and False");
 
     struct b {};
 
@@ -69,9 +68,12 @@ namespace cexpr_control_tests {
     run_line : if_else<True, Assignment<b>, double, bool, RE> {};
     run_line : if_else<False, Assignment<b>, bool, float, RE> {};
 
-    static_assert(std::is_same_v<value<b, RE>, float>);
+    static_assert(std::is_same_v<value<b, RE>, float>, "if_else works correctly with True and False");
 };
 
+// these tests check the order in which parent template classes are instantiated
+// The assignments show that this order depends on the compiler
+// Clang instantiates the templates depth-first, while GCC short-circuits the instantiation of non-folded templates
 namespace inheritance_order_tests {
     using namespace ctstd;
     using namespace type_var;
@@ -83,7 +85,7 @@ namespace inheritance_order_tests {
 
     run_line : Assign<a, unsigned, RE>, Assign<a, int, RE> {};
 
-    static_assert(std::is_same_v<value<a, RE>, int>);
+    static_assert(std::is_same_v<value<a, RE>, int>, "templates of the same depth are instantiated in the order they are written");
 
     run_line: 
         Assign<a, short, RE>, 
@@ -91,9 +93,9 @@ namespace inheritance_order_tests {
         Assign<a, long, RE> 
     {};
 #ifdef __clang__
-    static_assert(std::is_same_v<value<a, RE>, long>, "Clang instantiates the templates depth-first");
+    static_assert(std::is_same_v<value<a, RE>, long>, "Clang instantiates the templates depth-first, in the order they are written in the parent list");
 #elif __GNUG__
-    static_assert(std::is_same_v<value<a, RE>, int>, "GCC short-circuits the instantiation of non-folded templates");
+    static_assert(std::is_same_v<value<a, RE>, int>, "GCC evaluates the non-recursive template first in the order they are written, then the recursive one");
 #endif
 
     struct b{};
@@ -103,17 +105,17 @@ namespace inheritance_order_tests {
         Assign<b, long, RE>
     {};
 #ifdef __clang__
-    static_assert(std::is_same_v<value<b, RE>, long>);
+    static_assert(std::is_same_v<value<b, RE>, long>,  "Clang instantiates the templates depth-first, in the order they are written in the parent list");
 #elif __GNUG__
-    static_assert(std::is_same_v<value<b, RE>, int>);
+    static_assert(std::is_same_v<value<b, RE>, int>, "GCC evaluates the non-recursive template first in the order they are written, then the recursive ones depth-first");
 #endif
 
     run_line:
-        Delayed<Assignment<b>>::call<short, RE>, 
-        Delayed<Delayed<Assignment<b>>>::call<int, RE>,
-        Delayed<Assignment<b>>::call<long, RE>
+        Delayed<Assignment<b>>::__call__<short, RE>, 
+        Delayed<Delayed<Assignment<b>>>::__call__<int, RE>,
+        Delayed<Assignment<b>>::__call__<long, RE>
     {};
-    static_assert(std::is_same_v<value<b, RE>, long>);
+    static_assert(std::is_same_v<value<b, RE>, long>, "nested templates are always instantiated depth-first");
 
     struct d {};
     struct e {};
@@ -123,7 +125,7 @@ namespace inheritance_order_tests {
         Assign<e, value<d, RE>, RE>
     {};
 
-    static_assert(std::is_same_v<value<e, RE>, float>);
+    static_assert(std::is_same_v<value<e, RE>, float>, "the arguments of the second template evaluated after the first one, so the strategy is depth-first");
 
     struct g {};
     struct h {};
@@ -131,14 +133,14 @@ namespace inheritance_order_tests {
     run_line : Assign<g, int, RE> {};
 
     run_line:
-        Delayed<Assignment<g>>:: template call<float, RE>,
+        Delayed<Assignment<g>>:: template __call__<float, RE>,
         Assign<h, value<g, RE>, RE>
     {};
 
 #ifdef __clang__
-    static_assert(std::is_same_v<value<h, RE>, float>);
+    static_assert(std::is_same_v<value<h, RE>, float>, "Clang starts evaluating the second template only after the first one has been instaintiated fully"); 
 #elif __GNUG__
-    static_assert(std::is_same_v<value<h, RE>, int>);
+    static_assert(std::is_same_v<value<h, RE>, int>, "GCC starts instantiating the second template and its arguments before the first one");
 #endif
 
     struct i {};
@@ -152,19 +154,14 @@ namespace inheritance_order_tests {
         Assign<j, value<i, RE>, RE> {
     };
 
-    run_line : Assign<i, int, RE> {};
-    run_line : misdirection<RE> {};
+    run_line : 
+        Assign<i, int, RE>, 
+        misdirection<RE> 
+    {};
 
-    static_assert(std::is_same_v<value<j, RE>, int>);
+    static_assert(std::is_same_v<value<j, RE>, int>, "functions aren't cached even if their arguments are discarded");
 
     
-    struct j1 {};
-    struct i1 {};
-    run_line : Assign<i1, short, RE> {};
-    run_line : Assign<j1, value<i1, RE>, RE> {};
-
-    static_assert(std::is_same_v<value<j1, RE>, short>);
-
     struct k {};
     struct l {};
 
@@ -174,6 +171,44 @@ namespace inheritance_order_tests {
         Assign<l, value<k, RE>, RE>
     {};
     static_assert(std::is_same_v<value<k, RE>, int>);
+
+    struct m {};
+
+    run_line :
+        Delayed<Assignment<a>>:: template __call__<Assign<m, bool, RE>, RE>,
+        Assign<m, int, RE>
+    {};
+
+    static_assert(std::is_same_v<value<m, RE>, int>, "");
+
+    struct n {};
+
+    template <class T>
+    struct simplified : Delayed<Assignment<n>>:: template __call__<float, RE> {};
+
+    run_line : simplified<RE>, Assign<n, int, RE> {};
+
+#ifdef __clang__
+    static_assert(std::is_same_v<value<n, RE>, int>); 
+#elif __GNUG__
+    static_assert(std::is_same_v<value<n, RE>, float>);
+#endif
+
+    struct o {};
+
+    template <class T>
+    struct simplified2 : Assign<o, int, RE> {};
+
+    run_line : 
+        simplified2<RE>, 
+        Assign<o, float, RE> 
+    {};
+
+#ifdef __clang__
+    static_assert(std::is_same_v<value<o, RE>, float>); 
+#elif __GNUG__
+    static_assert(std::is_same_v<value<o, RE>, int>);
+#endif
 };
 
 namespace using_order_test {
@@ -194,7 +229,7 @@ namespace using_order_test {
     struct b {};
     run_line {
         using _2 = Assign<b, int, RE>;
-        using _1 = Delayed<Assignment<b>>:: template call<long, decltype([](){})>;
+        using _1 = Delayed<Assignment<b>>:: template __call__<long, decltype([](){})>;
     };
     static_assert(std::is_same_v<value<b, RE>, int>);
 
@@ -241,7 +276,7 @@ namespace memberfunction_order_test {
 
     struct b {};
     run_line {
-        auto _1() { return Delayed<Assignment<b>>:: template call<float, decltype([](){})>();};
+        auto _1() { return Delayed<Assignment<b>>:: template __call__<float, decltype([](){})>();};
         auto _2() { return Assign<b, long, RE>();};
     };
     static_assert(std::is_same_v<value<a, RE>, long>);
@@ -262,13 +297,13 @@ namespace mixed_order_test {
     struct b {};
     run_line : Assign<b, short, RE> {
         using _1 = Assign<b, int, RE>;
-        using _2 = Delayed<Assignment<b>>:: template call<long, decltype([](){})>;
+        using _2 = Delayed<Assignment<b>>:: template __call__<long, decltype([](){})>;
 
     };
     static_assert(std::is_same_v<value<b, RE>, int>);
 
     struct c {};
-    run_line : Delayed<Assignment<c>>:: template call<long, decltype([](){})> {
+    run_line : Delayed<Assignment<c>>:: template __call__<long, decltype([](){})> {
         using _1 = Assign<c, int, RE>;
 
     };
@@ -379,7 +414,7 @@ namespace recursion_test_2 {
 
     struct SumOfFirstIntegers {
         template <class _>
-        struct call : 
+        struct __call__ : 
             Assign<a, 
                 peano::Succ<value<a, RE>>, RE
             >,
@@ -401,6 +436,45 @@ namespace recursion_test_2 {
 #endif
 }
 
+namespace recursion_test_delayed {
+    using namespace type_var;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    struct b {};
+    struct c {};
+    run_line : Assign<a, peano::Zero, RE> {};
+    run_line : Assign<b, peano::Zero, RE> {};
+    run_line : Assign<c, ctstd::True, RE> {};
+
+
+    struct SumOfFirstIntegers {
+        template <class _>
+        struct __call__ : 
+            Assign<a, 
+                peano::Succ<value<a, RE>>, RE
+            >,
+            Assign<b,
+                peano::add<value<b, RE>, value<a, RE>>, RE 
+            >,
+            Assign<c,
+                peano::leq<value<a, RE>, peano::Five>, RE
+            >
+        {};
+    };
+
+    run_line : ::cexpr_control::DoWhile<Delayed<Delayed<SumOfFirstIntegers>>, c, RE> {};
+
+#ifdef __clang__
+    static_assert(std::is_same_v<value<b, RE>, peano::Integer<21>>);
+#elif __GNUG__
+    static_assert(std::is_same_v<value<b, RE>, peano::Integer<28>>);
+#endif
+}
+
+
 namespace big_recursion_test {
     using namespace type_var;
     using namespace cexpr_control;
@@ -419,7 +493,7 @@ namespace big_recursion_test {
 
     struct CollatzStep {
         template <class _>
-        struct call :
+        struct __call__ :
             if_else<
                 ctstd::is_same<
                     peano::remainder<

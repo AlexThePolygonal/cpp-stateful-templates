@@ -94,7 +94,17 @@ namespace type_var {
         }
     };
     
-    // Assign the value Val to the type T
+    /// Core assignment primitive: stores the value Val in the type variable T
+    /// This is the fundamental operation that enables stateful metaprogramming by using
+    /// friend injection to create global state at compile time.
+    /// 
+    /// Template parameters:
+    /// - T: The type variable to assign to (acts as a variable name)
+    /// - Val: The value/type to store in T (can be any type)
+    /// - _: Unique lambda type decltype([](){}) required for stateful behavior
+    /// 
+    /// Usage: struct assignment : Assign<variable_name, value_type, RE> {};
+    /// After instantiation, value<variable_name, RE> will return value_type
     template<
         class T, class Val,
         class _, 
@@ -102,13 +112,39 @@ namespace type_var {
     >
     struct Assign {};
 
+    /// Function object wrapper for delayed assignment operations
+    /// Creates a callable template that can be used with control flow primitives
+    /// like if_, if_else, and loop constructs that expect function objects.
+    /// 
+    /// Template parameter:
+    /// - T: The type variable to assign to
+    /// 
+    /// The nested 'call' template takes:
+    /// - U: The value/type to assign to T  
+    /// - _: Unique lambda type decltype([](){}) required for stateful behavior
+    /// 
+    /// Usage examples:
+    /// - if_<condition, Assignment<var>, new_value, RE>
+    /// - Delayed<Assignment<var>>::call<new_value, RE>
     template <class T> struct Assignment {
-        template <class U, class _> struct call : Assign<T, U, _> {};
+        template <class U, class _> struct __call__ : Assign<T, U, _> {};
     };
 
 
 
-    // Get the value assigned to T
+    /// Retrieves the current value stored in a type variable T
+    /// This is the fundamental read operation that accesses the global state
+    /// created by friend injection. Uses SFINAE and overload resolution to
+    /// find the most recently assigned value.
+    /// 
+    /// Template parameters:
+    /// - T: The type variable to read from (the variable name)
+    /// - _: Unique lambda type decltype([](){}) required for stateful behavior
+    /// 
+    /// Returns: The type/value most recently assigned to T via Assign<T, Val, _>
+    /// If no assignment has been made, returns ctstd::None
+    /// 
+    /// Usage: using current_value = value<variable_name, RE>;
     template <
         class T, class _,
         class R = typename decltype(detail::load_reader<detail::Addr<T>, 0, _>(int{}))::value
@@ -121,7 +157,7 @@ namespace cexpr_control {
     template <class T>
     struct Delayed {
         template <class ... Args>
-        struct call : T::template call<Args...> {};
+        struct __call__ : T::template __call__<Args...> {};
     };
 
 
@@ -134,24 +170,28 @@ namespace cexpr_control {
 
         template <class Func, class Args, class Brgs, class _>
         struct IfElseImpl<ctstd::True, Func, Args, Brgs, _> {
-            using Res = typename Func:: template call<Args, _>;
+            using Res = typename Func:: template __call__<Args, _>;
         };
         template <class Func, class Args, class Brgs,class _>
         struct IfElseImpl<ctstd::False, Func, Args, Brgs, _> {
-            using Res = typename Func:: template call<Brgs, _>;
+            using Res = typename Func:: template __call__<Brgs, _>;
         };
 
         template <
             class v, 
             class Func, class ... Args
             >
-        struct IfImpl {
+        struct IfImpl {};
+
+        template <class Func, class ... Args>
+        struct IfImpl<ctstd::False, Func, Args...> {
             using Res = ctstd::None;
         };
 
+
         template <class Func, class ... Args>
         struct IfImpl<ctstd::True, Func, Args...> {
-            using Res = typename Func:: template call<Args...>;
+            using Res = typename Func:: template __call__<Args...>;
         };
 
         template <class T, class U>
@@ -162,11 +202,11 @@ namespace cexpr_control {
     };
     // If v is true, call Func(ArgsIfTrue)
     // If v is false, call Fun(ArgsIfTrue)
-    template <class v, class Func, class ArgsIfTrue, class ArgsIfFalse, class _>
-    using if_else = typename detail::IfElseImpl<v, Func, ArgsIfTrue, ArgsIfFalse, _>::Res;
+    template <class cond, class Func, class ArgsIfTrue, class ArgsIfFalse, class _>
+    using if_else = typename detail::IfElseImpl<cond, Func, ArgsIfTrue, ArgsIfFalse, _>::Res;
 
-    template <class v, class Func, class Args, class _>
-    using if_ = typename detail::IfImpl<v, Func, Args, _>::Res;
+    template <class cond, class Func, class Args, class _>
+    using if_ = typename detail::IfImpl<cond, Func, Args, _>::Res;
 
     template <
         class func,
@@ -185,15 +225,15 @@ namespace cexpr_control {
         class speccond
     > 
     struct DoWhile: 
-        func:: template call<
-            detail::Pair<_, detail::WrapInt<N>>
+        func:: template __call__<
+            decltype([](){})
         >,
         DoWhile<
             func, 
             stopcond, 
             _,
             N+1,             
-            typename type_var::value<stopcond, detail::Pair<_, detail::WrapInt<N>>>
+            typename type_var::value<stopcond, decltype([](){})>
         > 
     {};
 
