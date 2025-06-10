@@ -207,6 +207,13 @@ For purity's sake, they're re-implemented from scratch. I believe it enhances th
 
 ### Function execution behaviour
 
+Stateful metaprogramming isn't an intended part of C++. Because templates are assumed to be stateless, the compiler has no obligation to execute them in any reasonable order, and almost all of the code in this repository is UB.
+
+In practice, template instantiation behaves predictably on each compiler. I have tested on clang++-19 and gcc-14, and the behaviour is the same on earlier version, excluding random compiler crashes.
+
+Clang executes all templates in the order that they appear, recursively. First, Clang instantiates the parent classes, then the classes occuring in the body of the class.
+
+GCC behaves in a bizarre way. First, it executes
 
 
 ## Implementation details

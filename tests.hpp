@@ -276,10 +276,28 @@ namespace memberfunction_order_test {
 
     struct b {};
     run_line {
-        auto _1() { return Delayed<Assignment<b>>:: template __call__<float, decltype([](){})>();};
+        auto _1() { return Delayed<Assignment<b>>:: template __call__<float, RE>();};
         auto _2() { return Assign<b, long, RE>();};
     };
     static_assert(std::is_same_v<value<a, RE>, long>);
+
+    struct c {};
+    run_line {
+        auto _1(Assign<c, long, RE> _) { return Assign<c, int, RE>();};
+    };
+    static_assert(std::is_same_v<value<c, RE>, int>);
+
+    struct d {};
+    run_line {
+        auto _1(
+            Delayed<Assignment<d>>:: template __call__<float, RE> _
+        ) { 
+            auto todiscard = Delayed<Assignment<d>>:: template __call__<long, RE>();
+            return Assign<d, int, RE>();
+        };
+    };
+    static_assert(std::is_same_v<value<d, RE>, int>);
+
 };
 
 namespace mixed_order_test {
@@ -305,9 +323,12 @@ namespace mixed_order_test {
     struct c {};
     run_line : Delayed<Assignment<c>>:: template __call__<long, decltype([](){})> {
         using _1 = Assign<c, int, RE>;
+        auto _2() {
+            return Assign<c, float, RE>();
+        }
 
     };
-    static_assert(std::is_same_v<value<c, RE>, int>);
+    static_assert(std::is_same_v<value<c, RE>, float>);
 
 
     struct d{};
@@ -325,6 +346,18 @@ namespace mixed_order_test {
     };
 
     static_assert(std::is_same_v<value<e, RE>, float>);
+
+    struct f {};
+
+    run_line {
+        using _1 = Delayed<Assignment<f>>:: template __call__<long, decltype([](){})> ;
+        auto _2() {
+            return Assign<f, float, RE>();
+        }
+
+    };
+    static_assert(std::is_same_v<value<f, RE>, float>); 
+
 };
 
 namespace recursion_test_1 {
