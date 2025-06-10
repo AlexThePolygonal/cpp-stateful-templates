@@ -205,6 +205,8 @@ For purity's sake, they're re-implemented from scratch. I believe it enhances th
 - `last`, `first`, `tail` allow to extract values from an Argpass tuple.
 - `Lambda` transforms a function with multiple arguments into a lambda function which accepts a single Argpass.
 
+Lists aren't implemented yet.
+
 ### Function execution behaviour
 
 Stateful metaprogramming isn't an intended part of C++. Because templates are assumed to be stateless, the compiler has no obligation to execute them in any reasonable order, and almost all of the code in this repository is UB.
@@ -213,7 +215,29 @@ In practice, template instantiation behaves predictably on each compiler. I have
 
 Clang executes all templates in the order that they appear, recursively. First, Clang instantiates the parent classes, then the classes occuring in the body of the class.
 
-GCC behaves in a bizarre way. First, it executes
+GCC behaves in a bizarre way. It behaves identically to Clang, except when instantiating the parent classes of a class, it first does a single pass over the parent template classes, instantiates all of the _simple_ subtemplates, that is, the template arguments which do not have ininstantiated template arguments, then proceeds recursively.
+
+Because of this, functions on gcc are processed bizarrely, which can be seen in the recursive tests.
+```cpp
+struct SumOfFirstIntegers {
+    template <class _>
+    struct __call__ :
+        // a = a + 1; 
+        Assign<a, 
+            peano::Succ<value<a, RE>>, RE
+        >,
+        // b = b + a;
+        Assign<b,
+            peano::add<value<b, RE>, value<a, RE>>, RE 
+        >,
+        // c = (a <= 5);
+        Assign<c,
+            peano::leq<value<a, RE>, peano::Five>, RE
+        >
+    {};
+};
+```
+This function is a single step of the loop which is used to compute the sum of the first 5 integers. `a` is the counter, `b` is the accumulator variable, and `c` is the stopping condition.
 
 
 ## Implementation details
