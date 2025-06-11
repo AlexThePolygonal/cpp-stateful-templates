@@ -96,15 +96,18 @@ namespace inheritance_order_tests {
 #endif
 
     struct b{};
+
+    run_line : Assign<a, long, RE> {};
+
     run_line: 
-        if_<True, Assignment<b>, short, RE>, 
         if_<True, Delayed<Assignment<b>>, int, RE>, 
-        Assign<b, long, RE>
+        if_<True, Assignment<b>, short, RE>, 
+        Assign<b, value<a, RE>, RE>
     {};
 #ifdef __clang__
     static_assert(std::is_same_v<value<b, RE>, long>,  "Clang instantiates the templates depth-first, in the order they are written in the parent list");
 #elif __GNUG__
-    static_assert(std::is_same_v<value<b, RE>, int>, "GCC evaluates the non-recursive template first in the order they are written, then the recursive ones depth-first");
+    static_assert(std::is_same_v<value<b, RE>, short>, "GCC evaluates the non-recursive template first in the order they are written, then the recursive ones depth-first");
 #endif
 
     run_line:
@@ -206,6 +209,149 @@ namespace inheritance_order_tests {
 #elif __GNUG__
     static_assert(std::is_same_v<value<o, RE>, int>);
 #endif
+
+    struct p {};
+    struct q {};
+
+    run_line :
+        Assign<p, short, RE>,
+        Assign<q, Assign<q, Assign<p, long, RE>, RE>, RE>,
+        Assign<q, Assign<p, int, RE>, RE>
+    {};
+
+    static_assert(std::is_same_v<value<p, RE>, int>, "the leaf templates are instantiated in order of occurrence");
+
+    struct r {};
+    struct s {};
+
+    run_line :
+        Assign<r, short, RE>,
+        Assign<s, Assign<r, long, RE>, RE>,
+        Assign<s, int, RE>
+    {};
+    static_assert(std::is_same_v<value<r, RE>, long>, "the leaf templates are instantiated in order of occurrence");
+    static_assert(std::is_same_v<value<s, RE>, int>, "The assigns are instantiated in order");
+
+    struct t {};
+
+    run_line :
+        Assign<t, short, RE>,
+        Assign<t, Assign<t, long, RE>, RE>,
+        Assign<t, int, RE>
+    {};
+
+    static_assert(std::is_same_v<value<t, RE>, int>, "Assign is a simple template, so it's instantiated in the order of occurrence");
+
+
+};
+
+namespace peano_order_test {
+    using namespace type_var;
+    // using namespace peano;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    run_line : Assign<a, peano::Zero, RE> {};
+
+    run_line :
+        Assign<a, peano::Succ<value<a, RE>>, RE>,
+        Assign<a, peano::Succ<value<a, RE>>, RE>
+    {};
+
+    static_assert(std::is_same_v<value<a, RE>, peano::Two>, "Succ is a simple template, so they're instantiated in the order of occurrence");
+
+    run_line : Assign<a, peano::One, RE> {};
+
+    run_line :
+        Assign<a, peano::add<value<a, RE>, peano::Two>, RE>,
+        Assign<a, peano::Succ<value<a, RE>>, RE>
+    {};
+    static_assert(std::is_same_v<value<a, RE>, peano::Four>);
+    
+    run_line : Assign<a, peano::One, RE> {};
+    run_line :
+        Assign<a, peano::mult<value<a, RE>, peano::Two>, RE>,
+        Assign<a, peano::Succ<value<a, RE>>, RE>
+    {};
+    static_assert(std::is_same_v<value<a, RE>, peano::Three>);
+
+    struct b{};
+    struct c{};
+    run_line : 
+        Assign<a, peano::One, RE>, 
+        Assign<b, peano::One, RE>,
+        Assign<c, ctstd::True, RE>
+    {};
+
+    run_line :            
+            Assign<a, 
+                peano::Succ<value<a, RE>>, RE
+            >,
+            Assign<b,
+                peano::add<value<b, RE>, value<a, RE>>, RE 
+            >,
+            Assign<c,
+                peano::leq<value<a, RE>, peano::One>, RE
+            >
+    {};
+    static_assert(std::is_same_v<value<a, RE>, peano::Two>);
+    static_assert(std::is_same_v<value<b, RE>, peano::Three>);
+    static_assert(std::is_same_v<value<c, RE>, ctstd::False>);
+
+    run_line : 
+        Assign<a, peano::One, RE>, 
+        Assign<b, peano::One, RE>,
+        Assign<c, ctstd::True, RE>
+    {};
+
+    template <class _>
+    struct folded :            
+            Assign<a, 
+                peano::Succ<value<a, RE>>, RE
+            >,
+            Assign<b,
+                peano::add<value<b, RE>, value<a, RE>>, RE 
+            >,
+            Assign<c,
+                peano::leq<value<a, RE>, peano::One>, RE
+            >
+    {};
+
+    run_line : folded<RE> {};
+
+    static_assert(std::is_same_v<value<a, RE>, peano::Two>);
+    static_assert(std::is_same_v<value<b, RE>, peano::Three>);
+    static_assert(std::is_same_v<value<c, RE>, ctstd::False>);
+
+    run_line : 
+        Assign<a, peano::One, RE>, 
+        Assign<b, peano::One, RE>,
+        Assign<c, ctstd::True, RE>
+    {};
+
+    struct lambda_folded {
+        template <class _>
+        struct __call__ : 
+            Assign<a, 
+                peano::Succ<value<a, RE>>, RE
+            >,
+            Assign<b,
+                peano::add<value<b, RE>, value<a, RE>>, RE 
+            >,
+            Assign<c,
+                peano::leq<value<a, RE>, peano::One>, RE
+            >
+        {};
+    };
+
+    run_line : 
+        lambda_folded:: template __call__<RE>
+    {};
+
+    static_assert(std::is_same_v<value<a, RE>, peano::Two>);
+    static_assert(std::is_same_v<value<b, RE>, peano::Three>);
+    static_assert(std::is_same_v<value<c, RE>, ctstd::False>);
 };
 
 namespace using_order_test {
@@ -254,7 +400,7 @@ namespace using_order_test {
         using _1 = Assign<T, long, RE>;
     };
     run_line : OuterLoop<e> {};
-    static_assert(std::is_same_v<value<e, RE>, long>, "using commands are executed from the inside out");
+    static_assert(std::is_same_v<value<e, RE>, long>, "Using declarations are instantiated at the same time as the class they're in");
 
 };
 
