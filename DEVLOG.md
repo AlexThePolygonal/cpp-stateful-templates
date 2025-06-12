@@ -10,7 +10,8 @@ Corrupt insanity, monstrous and vile, cruelly twisted beyond all human notions o
 ```cpp
 template <class _ = decltype([](){})>
 ```
-the default argument stays the same in different instantiations
+the default argument might decide to get itself cached and stay the same in different instantiations.
+Normally, you'll never see it, but in some conditions, you will 
 So we always have to write `decltype([](){})` explicitly to force reinstantiations.
 
 #### Premature instantiation of templates with dummy parameters  
