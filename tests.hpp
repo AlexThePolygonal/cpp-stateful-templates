@@ -7,6 +7,13 @@
 #define run_line template <> struct __run_line<decltype([](){})>
 #define RE decltype([](){})
 
+namespace prereqs {
+    template <class _ = decltype([](){})>
+    struct T {};
+
+    static_assert(!std::is_same_v<T<>, T<>>, "test");
+};
+
 // testing whether the assignment mechanism works well with all types, including the special ones like void, const, references, etc.
 namespace basic_tests {
     using namespace type_var;
@@ -612,6 +619,86 @@ namespace recursion_test_2 {
 #endif
 }
 
+namespace recursion_test_memberusing {
+    using namespace type_var;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    struct b {};
+    struct c {};
+    run_line : Assign<a, peano::Zero, RE> {};
+    run_line : Assign<b, peano::Zero, RE> {};
+    run_line : Assign<c, ctstd::True, RE> {};
+
+    struct SumOfFirstIntegers {
+        template <class _>
+        struct __call__  {
+            using _1 = Assign<a, 
+                peano::Succ<value<a, RE>>, RE
+            >;
+            using _2 = Assign<b,
+                peano::add<value<b, RE>, value<a, RE>>, RE 
+            >;
+            using _3 = Assign<c,
+                peano::leq<value<a, RE>, peano::Five>, RE
+            >;
+        };
+    };
+
+    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
+
+#ifdef __clang__
+    static_assert(std::is_same_v<value<b, RE>, peano::Integer<21>>);
+#elif __GNUG__
+    static_assert(std::is_same_v<value<b, RE>, peano::Integer<28>>);
+#endif
+};
+
+namespace recursion_test_memberfunction {
+    using namespace type_var;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    struct b {};
+    struct c {};
+    run_line : Assign<a, peano::Zero, RE> {};
+    run_line : Assign<b, peano::Zero, RE> {};
+    run_line : Assign<c, ctstd::True, RE> {};
+
+    struct SumOfFirstIntegers {
+        template <class _>
+        struct __call__  {
+            // member functions are compiled later than template instantiations
+            // template classes in member functions are instantiated later than all templates used in the class proper
+            static auto _1() { return Assign<a, 
+                peano::Succ<value<a, RE>>, RE
+            >(); };
+            static auto _2() { return Assign<b,
+                peano::add<value<b, RE>, value<a, RE>>, RE 
+            >(); };
+            static auto _3() { return Assign<c,
+                peano::leq<value<a, RE>, peano::Five>, RE
+            >(); };
+            using _4 = decltype(_1());
+            using _5 = decltype(_2());
+            using _6 = decltype(_3());
+        };
+    };
+    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
+
+#ifdef __clang__
+    static_assert(std::is_same_v<value<b, RE>, peano::Integer<21>>);
+#elif __GNUG__
+    static_assert(std::is_same_v<value<b, RE>, peano::Integer<28>>);
+#endif
+};
+
+
+
 namespace recursion_test_delayed {
     using namespace type_var;
     using namespace cexpr_control;
@@ -702,6 +789,8 @@ namespace big_recursion_test {
     static_assert(std::is_same_v<value<b, RE>, peano::Integer<18>>);
 #endif
 };
+
+
 
 
 namespace random_fun_tests {

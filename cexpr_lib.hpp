@@ -25,8 +25,8 @@ static_assert(!std::is_same_v<decltype([](){}), decltype([](){})>, "decltype([](
 
 
 /// expect frequent random crashes
-/// #pragma message "Do not forget Wno-non-template-friend"
-/// #pragma message "All template arguments named _ should receive decltype([](){}) only"
+#pragma message "Do not forget Wno-non-template-friend"
+#pragma message "All template arguments named _ should receive decltype([](){}) only"
 
 
 namespace type_var {
@@ -34,9 +34,8 @@ namespace type_var {
     namespace detail {
         // A trivially-constructible container for T
         // Used to force resolution of auto functions by `return Container<T>{}`
-        struct IsContainer {};
-        template <class T>
-        struct Containter : public IsContainer {
+        template <class T, class _>
+        struct Container : _ {
             using value = T;
         };
         template <class T> class Addr {};
@@ -53,7 +52,7 @@ namespace type_var {
         >
         struct Writer {
             friend constexpr auto flag(Flag<T, N>) {
-                return Containter<Val>(); // The return type is the value of T
+                return Container<Val, ctstd::None>(); // The return type is the value of T
             }
             constexpr static int value = N;
         };
@@ -61,7 +60,7 @@ namespace type_var {
         // if the flag(Flag<T, N>) doesn't exist yet, create it, storing Val in it 
         template <
             class T, class Val, 
-            int N = 0, class _ = decltype([](){})
+            int N = 0, class _
         >
         constexpr int assign_reader(float) {
             return Writer<T, N, Val>::value;
@@ -70,7 +69,7 @@ namespace type_var {
         template <
             class T, class Val, 
             int N = 0,
-            class _ = decltype([](){}),
+            class _,
             class = decltype(flag(Flag<T, N>{}))
         >
         constexpr int assign_reader(int) {
@@ -78,19 +77,19 @@ namespace type_var {
         }
 
         // If the flag(Flag<T, N>) doesn't exist, return None
-        template <class, int N = 0, class _ = decltype([](){})>
+        template <class, int N = 0, class _>
         constexpr auto load_reader(float) {
-            return detail::Containter<ctstd::None>{};
+            return detail::Container<ctstd::None, _>{};
         }
         // If the this is the last N with well-formed flag, return the value encoded in it, otherwise go to N+1
-        template<
+        template <
             class T, int N = 0,
-            class _ = decltype([](){}),
+            class _,
             class U = decltype(flag(Flag<T, N>{}))
         >
         constexpr auto load_reader(int) {
             using Res = decltype(load_reader<T, N+1, _>(int{}));
-            return ctstd::conditional_using<std::is_same_v<Res, detail::Containter<ctstd::None>>, U, Res>{};
+            return ctstd::conditional_using<std::is_same_v<Res, detail::Container<ctstd::None, _>>, U, Res>{};
         }
     };
     
@@ -107,10 +106,10 @@ namespace type_var {
     /// After instantiation, value<variable_name, RE> will return value_type
     template<
         class T, class Val,
-        class _, 
+        class _ = decltype([](){}), 
         int = detail::assign_reader<detail::Addr<T>, Val, 0, _>(int{})
     >
-    struct Assign {};
+    struct Assign : _ {};
 
     /// Function object wrapper for delayed assignment operations
     /// Creates a callable template that can be used with control flow primitives
@@ -146,7 +145,7 @@ namespace type_var {
     /// 
     /// Usage: using current_value = value<variable_name, RE>;
     template <
-        class T, class _,
+        class T, class _ = decltype([](){}),
         class R = typename decltype(detail::load_reader<detail::Addr<T>, 0, _>(int{}))::value
     >
     using value = R;
