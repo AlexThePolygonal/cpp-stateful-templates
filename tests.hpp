@@ -976,6 +976,151 @@ namespace big_recursion_test {
 };
 
 
+namespace recursion_test_memberusing_1 {
+    using namespace type_var;
+    using namespace ctstd;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    struct b {};
+    struct c {};
+    run_line : Assign<a, _0, RE> {};
+    run_line : Assign<b, _0, RE> {};
+    run_line : Assign<c, True, RE> {};
+
+    struct SumOfFirstIntegers {
+        template <class _>
+        struct __call__  {
+            using line_1 = Assign<a, add<a, _1, RE>, RE>;
+            using line_2 = Assign<b, add<a, b, RE>, RE>;
+            using line_3 = Assign<c, leq<a, _5, RE>, RE>;
+        };
+    };
+
+    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
+
+#ifdef __clang__
+    static_assert(to_bool<eq<b, Integer<21>, RE>>);
+#elif __GNUG__
+    static_assert(to_bool<eq<b, Integer<28>, RE>>);
+#endif
+};
+
+namespace recursion_test_memberfunction_1 {
+    using namespace type_var;
+    using namespace ctstd;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    struct b {};
+    struct c {};
+    run_line : Assign<a, _0, RE> {};
+    run_line : Assign<b, _0, RE> {};
+    run_line : Assign<c, True, RE> {};
+
+    struct SumOfFirstIntegers {
+        template <class _>
+        struct __call__  {
+            // member functions are compiled later than template instantiations
+            // template classes in member functions are instantiated later than all templates used in the class proper
+            static auto line_1() { return Assign<a, add<a, _1, RE>, RE>(); };
+            static auto line_2() { return Assign<b, add<a, b, RE>, RE>(); };
+            static auto line_3() { return Assign<c, leq<a, _5, RE>, RE>(); };
+            using line_4 = decltype(line_1());
+            using line_5 = decltype(line_2());
+            using line_6 = decltype(line_3());
+        };
+    };
+    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
+
+#ifdef __clang__
+    static_assert(to_bool<eq<b, Integer<21>, RE>>);
+#elif __GNUG__
+    static_assert(to_bool<eq<b, Integer<28>, RE>>);
+#endif
+};
+
+namespace recursion_test_delayed_1 {
+    using namespace type_var;
+    using namespace ctstd;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    struct b {};
+    struct c {};
+    struct d {};
+    run_line : Assign<a, _0, RE> {};
+    run_line : Assign<b, _0, RE> {};
+    run_line : Assign<c, True, RE> {};
+
+    struct SumOfFirstIntegers {
+        template <class _>
+        struct __call__ : 
+            Assign<a, add<a, _1, RE>, RE>,
+            Assign<b, add<a, b, RE>, RE>,
+            Assign<c, leq<a, _5, RE>, RE>
+        {};
+    };
+
+    run_line : ::cexpr_control::DoWhile<Delayed<Delayed<SumOfFirstIntegers>>, c, RE> {};
+
+#ifdef __clang__
+    static_assert(to_bool<eq<b, Integer<21>, RE>>);
+#elif __GNUG__
+    static_assert(to_bool<eq<b, Integer<28>, RE>>);
+#endif
+}
+
+namespace big_recursion_test_1 {
+    using namespace type_var;
+    using namespace ctstd;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    struct b {};
+    struct c {};
+
+    run_line: Assign<a, _7, RE> {};
+    // 5 > 16 > 8 > 4 > 2 > 1
+    // 7 > 22 > 11 > 34 > 17 > 52 > 26 > 13 > 40 > 20 > 10 > 5 > 16 > 8 > 4 > 2 > 1
+    run_line: Assign<b, _0, RE> {};
+    run_line: Assign<c, True, RE> {};
+
+    struct CollatzStep {
+        template <class _>
+        struct __call__ :
+            if_else<
+                eq<remainder<a, _2, RE>, _0, RE>,
+                Assignment<a>,
+                divide<a, _2, RE>,
+                add<mult<a, _3, RE>, _1, RE>,
+                RE
+            >,
+            Assign<b, add<b, _1, RE>, RE>,
+            Assign<c, Not<eq<a, _1, RE>>, RE>
+        {};
+    };
+
+    run_line: ::cexpr_control::DoWhile<CollatzStep, c, RE> {};
+
+#ifdef __clang__
+    static_assert(to_bool<eq<a, Integer<1>, RE>>);
+    static_assert(to_bool<eq<b, Integer<16>, RE>>);
+#elif __GNUG__
+    static_assert(to_bool<eq<a, Integer<2>, RE>>);
+    static_assert(to_bool<eq<b, Integer<18>, RE>>);
+#endif
+};
+
+
 
 
 namespace random_fun_tests {

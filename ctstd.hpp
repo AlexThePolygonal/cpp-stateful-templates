@@ -174,4 +174,16 @@ namespace ctstd {
     };
     template <class T, class U, class _>
     using eq = typename detail::EqImpl<T, U, peano::is_peano_integer<T>, peano::is_peano_integer<U>, _>::value;
+
+
+    //     // Custom logical operations
+
+    // template <class T>
+    // using Not = typename detail::NotImpl<T>::value;
+    // template <class T, class U>
+    // using And = typename detail::AndImpl<T, U>::value;
+    // template <class T, class U>
+    // using Or = typename detail::OrImpl<T, U>::value;
+    // template <class T, class U>
+    // using Xor = typename detail::XorImpl<T, U>::value;
 };
