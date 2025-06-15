@@ -13,7 +13,7 @@ namespace ctstd {
     
     struct None {};
 
-    namespace detail {struct IsBoolean {};};
+    namespace detail {  struct IsBoolean {};  };
     struct True : detail::IsBoolean {};
     struct False : detail::IsBoolean {};
 
@@ -122,12 +122,6 @@ namespace ctstd {
         using Xor_ = typename ctstd::detail::XorImpl_<T, U>::value;
     };
 
-    template <class T>
-    [[maybe_unused]] auto remove_nodiscard (T&& t) { return std::forward<T>(t); }
-
-    template <class T>
-    T naive_declval();
-
     namespace detail {
         template <bool cond, class T_true, class T_false>
         struct conditional_using_impl {
@@ -154,6 +148,10 @@ namespace argpass {
     template <class ... > struct Argpass; 
 
     namespace detail {
+
+        template <class T>
+        [[maybe_unused]] auto remove_nodiscard (T&& t) { return std::forward<T>(t); }
+
         template <class T, class U>
         struct Concatter {};
 
@@ -197,7 +195,7 @@ namespace argpass {
     namespace detail {
         template<typename... Args>
         [[maybe_unused]] auto args_last(Args&&... args) {
-            return (ctstd::remove_nodiscard(std::forward<Args>(args)), ...);
+            return (argpass::detail::remove_nodiscard(std::forward<Args>(args)), ...);
         }
         template <class ... Args>
         using pack_last_nonzero = decltype(detail::args_last(std::declval<Args>()...));

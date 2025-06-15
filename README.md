@@ -1,33 +1,28 @@
 # C++ Stateful Metaprogramming can be made into an imperative language
 
-<!-- If you have never heard of stateful metaprogramming in C++ before, there is a very good reason for that. 
-It is exactly what it says on the tin: template metaprogamming, but the templates now have modifiable global state. 
-The canonical example is constructing a template function `next` such that this compiles correctly:
-```c++
+Since 2015, we know that templates in C++ admit _state_, in the sense that there exist well-defined `constexpr` functons, the outputs of which change depending on the current state of the program.
+For example, there exists a function `next` such that the code below compiles.
+```cpp
 template <class _ = ...>
-constexpr int next() { ... };
+constexpr int next() { ... }
 
-static_assert(next<>() == 0);
-static_assert(next<>() == 1); 
+// next has a different value each time even though it's a constant expression
+static_assert(next<>() == 1);
 static_assert(next<>() == 2);
+static_assert(next<>() == 3);
 ```
 
+Much more is possible. Inspired by old blog posts, I was able to create an entire imperative language for C++ metaprogramming, implemented as a header-only library for the C++20 standard. The language is dynamically typed and, even though the syntax is unorthodox, it might look like Python at first glance. It has all of the primitives which you need for coding, like conditionals and while loops. 
 
-DISCLAIMER: The correctness of stateful metaprogramming is debatable, and I really don't recommend using any such code in production, period. 
+Also, it allows us to discover several fascinating footguns which I didn't know before.
 
-Most of previou, but don't go much further than that. So I decided to implement the standard primitives of an imperative language, like conditionals, loops and recursion, because I thought it would make an interesting challenge.
+## Public interface
 
-It was indeed a very interesting challenge, and in the end I was able to write a [C++ library](github.com/placeholder/TODO) which works for C++20 or higher, modulo a couple footguns.
-
-I describe the user interface below.
- -->
-## Library functions
-
-Most of the behaviour of the library can be seen in the [tests.hpp](TODO) file. Because the lib is compile-time, the tests go into header files.
+The way that the language works can be seen in the [tests.hpp](https://github.com/AlexThePolygonal/cpp-stateful-templates/blob/master/tests.hpp) file. Because the lib is compile-time, the tests go into header files.
 
 ### ```namespace type_var```
 
-The basic primitives are defined in the namespace `type_var`.
+The primitive stateful operations are defined in the namespace `type_var`.
 
 In the stateful metaprogramming paradigm, each type name can be thought of  _variable_ which refers to another variable, as in Python. Because C++ templates are untyped, there are no restrictions on the contents of a variable at all.
 For example:
@@ -194,18 +189,27 @@ I wish to highlight that the `if_` function branches on raw values, while the `D
 
 ### ```namespace ctstd```
 
-This namespace contains primitive types, values and operations on them.
+This namespace contains the primitive "types" and "values" of the language.
 
-For purity's sake, they're re-implemented from scratch. I believe it enhances the Pythonic flavour of the language
+For purity's sake, they're re-implemented from scratch. I believe it enhances the Pythonic flavour.
 
 - `ctstd::None` is analogous to `None` in Python.
-- `True` and `False` are boolean variables. 
-- `And`, `Or`, `Xor`, `Not` are primitive functions on the booleans
+- `True` and `False` are boolean values. 
+- `And`, `Or`, `Xor`, `Not` are primitive functions on the booleans.
+
+Arithmetic is implemented using the Peano constructions.
+
+- `_0, ..., _12` and `Integer<N>`are simple integers
+- `add, mult, divide, remainder, leq` are the primitive operations on the integers, they do exactly what it says on the tin.
+
+Lists aren't implemented yet.
+
+These special helper templates are needed if you want to construct functions which take multiple arguments. For now, they weren't of much use during the testing.
+
 - `Argpass<...>` is a template for passing tuples of values
 - `last`, `first`, `tail` allow to extract values from an Argpass tuple.
 - `Lambda` transforms a function with multiple arguments into a lambda function which accepts a single Argpass.
 
-Lists aren't implemented yet.
 
 ### Function execution behaviour
 
@@ -223,17 +227,11 @@ struct SumOfFirstIntegers {
     template <class _>
     struct __call__ :
         // a = a + 1; 
-        Assign<a, 
-            peano::Succ<value<a, RE>>, RE
-        >,
+        Assign<a, add<a, _1, RE>, RE>,
         // b = b + a;
-        Assign<b,
-            peano::add<value<b, RE>, value<a, RE>>, RE 
-        >,
+        Assign<b, add<b, a, RE>, RE>,
         // c = (a <= 5);
-        Assign<c,
-            peano::leq<value<a, RE>, peano::Five>, RE
-        >
+        Assign<c, leq<a, _5, RE>, RE>
     {};
 };
 ```
@@ -243,7 +241,8 @@ On GCC, the simple templates `value<a, RE>` and `value<b, RE>` are instantiated 
 Because of it, all of the arguments of the assignments have the same value.
 
 
-
 ## Implementation details
 
 The method was discovered long ago, and there are several blogposts detailing the key idea, «friend injection». [This blogpost](https://mc-deltat.github.io/articles/stateful-metaprogramming-cpp20) has a list of references for those interested. I also recommend reading [this](https://b.atch.se/posts/non-constant-constant-expressions/) as an introduction.
+
+TODO

@@ -176,16 +176,6 @@ namespace ctstd {
     using eq = typename detail::EqImpl<T, U, peano::is_peano_integer<T>, peano::is_peano_integer<U>, _>::value;
 
 
-    /*  
-    template <class T>
-        using Not_ = typename ctstd::detail::NotImpl_<T>::value;
-        template <class T, class U>
-        using And_ = typename ctstd::detail::AndImpl_<T, U>::value;
-        template <class T, class U>
-        using Or_ = typename ctstd::detail::OrImpl_<T, U>::value;
-        template <class T, class U>
-        using Xor_ = typename ctstd::detail::XorImpl_<T, U>::value;
-    */
     namespace detail {
         template <class T, class TisRV, class _>
         struct NotImpl {
