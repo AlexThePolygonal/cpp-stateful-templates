@@ -12,9 +12,21 @@ static_assert(next<>() == 2);
 static_assert(next<>() == 3);
 ```
 
-Much more is possible. Inspired by prior work, I have developed an entire imperative language for C++ metaprogramming, implemented as a header-only library for the C++20 standard. The language is dynamically typed. While the syntax is unorthodox, its functionality resembles that of Python. It has all of the primitives which you need for coding, like conditionals and while loops. 
+Much more is possible. Inspired by prior work, I have developed an entire imperative language for C++ metaprogramming, implemented as a header-only library for the C++20 standard. The language is dynamically typed. While the syntax is unorthodox, its functionality resembles that of Python. It has all of the primitives which you need for coding, like conditionals and while loops. The statefulness implementation is traditional and uses friend injection, which I will detail in a later section.
 
-Additionally, this approach reveals several fascinating footguns which I didn't know before. The compile times are as large as expected, and we make heavy use of compiler-dependent behaviour.
+Additionally, this approach reveals several fascinating footguns which I didn't know before. The compile times are as large as expected, and we make heavy use of compiler-dependent behaviour. Because of this, I **do not** recommend using any of this code in production.
+
+## Getting Started
+
+To try out the functionality yourself, clone this repository and compile `main.cpp` with, for example
+```bash
+g++ -std=c++20 -O0 -Wno-non-template-friend main.cpp -o a.out
+```
+or 
+```bash
+clang++ -std=c++20 -O0 main.cpp -o a.out
+```
+No complicated build system is necessary, as the library is header-only. 
 
 ## Public interface
 
@@ -229,6 +241,8 @@ The following helper templates are provided for constructing functions that acce
 ### Function execution behaviour
 
 Stateful metaprogramming is not an intended feature of C++. Standard C++ implicitly assumes templates are stateless, and compilers have no obligation to instantiate templates in a specific order that would preserve stateful semantics. Because of it, most of the code in this repository is UB.
+
+To be exact, the standard doesn't give any information on the order in which different templates have to be instantiated, as it assumes that it cannot matter. 
 
 In practice, template instantiation order behaves predictably on each compiler. I have tested on Clang 19.1.1 and GCC 14.2.0, and the behaviour is similar on the earlier versions, excluding random compiler crashes.
 
