@@ -32,6 +32,21 @@ namespace ctstd {
     using is_same = typename detail::is_same_impl<T, U>::value;
 
     namespace detail {
+        template<typename B>
+        True test_ptr_conv(const volatile B*);
+        template<typename>
+        False test_ptr_conv(const volatile void*);
+    
+        template<typename B, typename D>
+        auto test_is_base_of(int) -> decltype(test_ptr_conv<B>(static_cast<D*>(nullptr)));
+        template<typename, typename>
+        auto test_is_base_of(...) -> True; // private or ambiguous base
+    }
+ 
+    template<typename Base, typename Derived>
+    using is_base_of = decltype(detail::test_is_base_of<Base, Derived>(0));
+
+    namespace detail {
         template <class T>
         struct NotImpl {};
 

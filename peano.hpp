@@ -6,23 +6,24 @@ namespace peano {
     struct Zero : IsPeanoInteger {
         using Prev = ctstd::None;
     };
+    using _0 = Zero;
 
     template <class T> struct Succ : IsPeanoInteger {
         using Prev = T;
     };
 
-    using One = Succ<Zero>;
-    using Two = Succ<One>;
-    using Three = Succ<Two>;
-    using Four = Succ<Three>;
-    using Five = Succ<Four>;
-    using Six = Succ<Five>;
-    using Seven = Succ<Six>;
-    using Eight = Succ<Seven>;
-    using Nine = Succ<Eight>;
-    using Ten = Succ<Nine>;
-    using Eleven = Succ<Ten>;
-    using Twelve = Succ<Eleven>;
+    using _1 = Succ<Zero>;
+    using _2 = Succ<_1>;
+    using _3 = Succ<_2>;
+    using _4 = Succ<_3>;
+    using _5 = Succ<_4>;
+    using _6 = Succ<_5>;
+    using _7 = Succ<_6>;
+    using _8 = Succ<_7>;
+    using _9 = Succ<_8>;
+    using _10 = Succ<_9>;
+    using _11 = Succ<_10>;
+    using _12 = Succ<_11>;
 
     namespace detail {
         template <unsigned N>
@@ -38,7 +39,7 @@ namespace peano {
     template <unsigned N>
     using Integer = typename detail::IntegerImpl<N>::value;
 
-    static_assert(std::is_same_v<Twelve, Integer<12>>);
+    static_assert(std::is_same_v<_12, Integer<12>>);
     namespace detail {
         template <class A, class B>
         struct Add {
@@ -53,7 +54,7 @@ namespace peano {
     template <class A, class B>
     using add = typename detail::Add<A, B>::value;
 
-    static_assert(std::is_same_v<add<Two, Two>, Four>);
+    static_assert(std::is_same_v<add<_2, _2>, _4>);
 
     namespace detail {
         template <class A, class B>
@@ -68,7 +69,7 @@ namespace peano {
     template <class A, class B>
     using mult = typename detail::Mult<A, B>::value;
 
-    static_assert(std::is_same_v<mult<Two, Two>, Four>);
+    static_assert(std::is_same_v<mult<_2, _2>, _4>);
 
     template <class T>
     constexpr unsigned cast = cast<typename T::Prev> + 1;
@@ -76,7 +77,7 @@ namespace peano {
     template <>
     constexpr unsigned cast<Zero> = 0;
 
-    static_assert(cast<Eleven> == 11);
+    static_assert(cast<_11> == 11);
 
     namespace detail {
         template <class A, class B>
@@ -100,9 +101,9 @@ namespace peano {
     template <class A, class B>
     using minus = typename detail::Minus<A, B>::value;
 
-    static_assert(std::is_same_v<minus<Two, Three>, Zero>);
-    static_assert(std::is_same_v<minus<Three, Three>, Zero>);
-    static_assert(std::is_same_v<minus<Four, Three>, One>);
+    static_assert(std::is_same_v<minus<_2, _3>, _0>);
+    static_assert(std::is_same_v<minus<_3, _3>, _0>);
+    static_assert(std::is_same_v<minus<_4, _3>, _1>);
 
 
     namespace detail {
@@ -123,9 +124,9 @@ namespace peano {
     template <class A, class B>
     using leq = typename detail::Leq<A, B>::value;
 
-    static_assert(std::is_same_v<leq<Four, Eight>, ctstd::True>);
-    static_assert(std::is_same_v<leq<Four, Four>, ctstd::True>);
-    static_assert(std::is_same_v<leq<Four, Three>, ctstd::False>);
+    static_assert(std::is_same_v<leq<_4, _8>, ctstd::True>);
+    static_assert(std::is_same_v<leq<_4, _4>, ctstd::True>);
+    static_assert(std::is_same_v<leq<_4, _3>, ctstd::False>);
 
     namespace detail {
         template <class A, class B>
@@ -153,8 +154,8 @@ namespace peano {
     template <class A, class B>
     using remainder = typename detail::Div<A, B>::remainder;
 
-    static_assert(std::is_same_v<div<Three, Two>, One>);
-    static_assert(std::is_same_v<remainder<Three, Two>, One>);
-    static_assert(std::is_same_v<remainder<Two, Two>, Zero>);
+    static_assert(std::is_same_v<div<_3, _2>, _1>);
+    static_assert(std::is_same_v<remainder<_3, _2>, _1>);
+    static_assert(std::is_same_v<remainder<_2, _2>, _0>);
 };
 

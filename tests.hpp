@@ -13,6 +13,21 @@ namespace prereqs {
     struct T {};
 
     static_assert(!std::is_same_v<T<>, T<>>, "test");
+
+    struct a {};
+    struct b : a {};
+    struct c : b {};
+    struct d : a {};
+    template <class T, class U>
+    struct is_base_of__boolean {
+        static constexpr bool value = std::is_same_v<ctstd::is_base_of<T, U>, ctstd::True>;
+    };
+    static_assert(is_base_of__boolean<a, b>::value, "b is derived from a");
+    static_assert(is_base_of__boolean<b, c>::value, "c is derived from b");
+    static_assert(is_base_of__boolean<a, d>::value, "d is derived from a");
+    static_assert(is_base_of__boolean<b, b>::value, "b is derived from b");
+    static_assert(!is_base_of__boolean<c, b>::value, "b isn't derived from c");
+    static_assert(!is_base_of__boolean<d, b>::value, "d isn't derived from b");
 };
 
 // testing whether the assignment mechanism works well with all types, including the special ones like void, const, references, etc.
@@ -260,35 +275,35 @@ namespace peano_order_test {
     template <class> struct __run_line {};
 
     struct a {};
-    run_line : Assign<a, peano::Zero, RE> {};
+    run_line : Assign<a, peano::_0, RE> {};
 
     run_line :
         Assign<a, peano::Succ<value<a, RE>>, RE>,
         Assign<a, peano::Succ<value<a, RE>>, RE>
     {};
 
-    static_assert(std::is_same_v<value<a, RE>, peano::Two>, "Succ is a simple template, so they're instantiated in the order of occurrence");
+    static_assert(std::is_same_v<value<a, RE>, peano::_2>, "Succ is a simple template, so they're instantiated in the order of occurrence");
 
-    run_line : Assign<a, peano::One, RE> {};
+    run_line : Assign<a, peano::_1, RE> {};
 
     run_line :
-        Assign<a, peano::add<value<a, RE>, peano::Two>, RE>,
+        Assign<a, peano::add<value<a, RE>, peano::_2>, RE>,
         Assign<a, peano::Succ<value<a, RE>>, RE>
     {};
-    static_assert(std::is_same_v<value<a, RE>, peano::Four>);
+    static_assert(std::is_same_v<value<a, RE>, peano::_4>);
     
-    run_line : Assign<a, peano::One, RE> {};
+    run_line : Assign<a, peano::_1, RE> {};
     run_line :
-        Assign<a, peano::mult<value<a, RE>, peano::Two>, RE>,
+        Assign<a, peano::mult<value<a, RE>, peano::_2>, RE>,
         Assign<a, peano::Succ<value<a, RE>>, RE>
     {};
-    static_assert(std::is_same_v<value<a, RE>, peano::Three>);
+    static_assert(std::is_same_v<value<a, RE>, peano::_3>);
 
     struct b{};
     struct c{};
     run_line : 
-        Assign<a, peano::One, RE>, 
-        Assign<b, peano::One, RE>,
+        Assign<a, peano::_1, RE>, 
+        Assign<b, peano::_1, RE>,
         Assign<c, ctstd::True, RE>
     {};
 
@@ -300,16 +315,16 @@ namespace peano_order_test {
                 peano::add<value<b, RE>, value<a, RE>>, RE 
             >,
             Assign<c,
-                peano::leq<value<a, RE>, peano::One>, RE
+                peano::leq<value<a, RE>, peano::_1>, RE
             >
     {};
-    static_assert(std::is_same_v<value<a, RE>, peano::Two>);
-    static_assert(std::is_same_v<value<b, RE>, peano::Three>);
+    static_assert(std::is_same_v<value<a, RE>, peano::_2>);
+    static_assert(std::is_same_v<value<b, RE>, peano::_3>);
     static_assert(std::is_same_v<value<c, RE>, ctstd::False>);
 
     run_line : 
-        Assign<a, peano::One, RE>, 
-        Assign<b, peano::One, RE>,
+        Assign<a, peano::_1, RE>, 
+        Assign<b, peano::_1, RE>,
         Assign<c, ctstd::True, RE>
     {};
 
@@ -322,19 +337,19 @@ namespace peano_order_test {
                 peano::add<value<b, RE>, value<a, RE>>, RE 
             >,
             Assign<c,
-                peano::leq<value<a, RE>, peano::One>, RE
+                peano::leq<value<a, RE>, peano::_1>, RE
             >
     {};
 
     run_line : folded<RE> {};
 
-    static_assert(std::is_same_v<value<a, RE>, peano::Two>);
-    static_assert(std::is_same_v<value<b, RE>, peano::Three>);
+    static_assert(std::is_same_v<value<a, RE>, peano::_2>);
+    static_assert(std::is_same_v<value<b, RE>, peano::_3>);
     static_assert(std::is_same_v<value<c, RE>, ctstd::False>);
 
     run_line : 
-        Assign<a, peano::One, RE>, 
-        Assign<b, peano::One, RE>,
+        Assign<a, peano::_1, RE>, 
+        Assign<b, peano::_1, RE>,
         Assign<c, ctstd::True, RE>
     {};
 
@@ -348,7 +363,7 @@ namespace peano_order_test {
                 peano::add<value<b, RE>, value<a, RE>>, RE 
             >,
             Assign<c,
-                peano::leq<value<a, RE>, peano::One>, RE
+                peano::leq<value<a, RE>, peano::_1>, RE
             >
         {};
     };
@@ -357,8 +372,8 @@ namespace peano_order_test {
         lambda_folded:: template __call__<RE>
     {};
 
-    static_assert(std::is_same_v<value<a, RE>, peano::Two>);
-    static_assert(std::is_same_v<value<b, RE>, peano::Three>);
+    static_assert(std::is_same_v<value<a, RE>, peano::_2>);
+    static_assert(std::is_same_v<value<b, RE>, peano::_3>);
     static_assert(std::is_same_v<value<c, RE>, ctstd::False>);
 };
 
@@ -522,10 +537,10 @@ namespace recursion_test_1 {
     struct c {};
     struct loop_cnt {};
 
-    run_line : Assign<a, peano::Zero, RE> {};
-    run_line : Assign<b, peano::Zero, RE> {};
+    run_line : Assign<a, peano::_0, RE> {};
+    run_line : Assign<b, peano::_0, RE> {};
     run_line : Assign<c, ctstd::True, RE> {};
-    run_line : Assign<loop_cnt, peano::Zero, RE> {};
+    run_line : Assign<loop_cnt, peano::_0, RE> {};
 
 
     template <int N>
@@ -540,7 +555,7 @@ namespace recursion_test_1 {
                 peano::Succ<value<a, RE>>, RE
             >,
             Assign<c,
-                peano::leq<value<a, RE>, peano::Three>, RE
+                peano::leq<value<a, RE>, peano::_3>, RE
             >
     {
     };
@@ -576,9 +591,9 @@ namespace recursion_test_1 {
 
 
 #ifdef __clang__
-    static_assert(std::is_same_v<value<a, RE>, peano::Four>);
+    static_assert(std::is_same_v<value<a, RE>, peano::_4>);
 #elif __GNUG__
-    static_assert(std::is_same_v<value<a, RE>, peano::Five>);
+    static_assert(std::is_same_v<value<a, RE>, peano::_5>);
 #endif
 }
 
@@ -591,8 +606,8 @@ namespace recursion_test_2 {
     struct a {};
     struct b {};
     struct c {};
-    run_line : Assign<a, peano::Zero, RE> {};
-    run_line : Assign<b, peano::Zero, RE> {};
+    run_line : Assign<a, peano::_0, RE> {};
+    run_line : Assign<b, peano::_0, RE> {};
     run_line : Assign<c, ctstd::True, RE> {};
 
 
@@ -606,7 +621,7 @@ namespace recursion_test_2 {
                 peano::add<value<b, RE>, value<a, RE>>, RE 
             >,
             Assign<c,
-                peano::leq<value<a, RE>, peano::Five>, RE
+                peano::leq<value<a, RE>, peano::_5>, RE
             >
         {};
     };
@@ -629,8 +644,8 @@ namespace recursion_test_memberusing {
     struct a {};
     struct b {};
     struct c {};
-    run_line : Assign<a, peano::Zero, RE> {};
-    run_line : Assign<b, peano::Zero, RE> {};
+    run_line : Assign<a, peano::_0, RE> {};
+    run_line : Assign<b, peano::_0, RE> {};
     run_line : Assign<c, ctstd::True, RE> {};
 
     struct SumOfFirstIntegers {
@@ -643,7 +658,7 @@ namespace recursion_test_memberusing {
                 peano::add<value<b, RE>, value<a, RE>>, RE 
             >;
             using _3 = Assign<c,
-                peano::leq<value<a, RE>, peano::Five>, RE
+                peano::leq<value<a, RE>, peano::_5>, RE
             >;
         };
     };
@@ -666,8 +681,8 @@ namespace recursion_test_memberfunction {
     struct a {};
     struct b {};
     struct c {};
-    run_line : Assign<a, peano::Zero, RE> {};
-    run_line : Assign<b, peano::Zero, RE> {};
+    run_line : Assign<a, peano::_0, RE> {};
+    run_line : Assign<b, peano::_0, RE> {};
     run_line : Assign<c, ctstd::True, RE> {};
 
     struct SumOfFirstIntegers {
@@ -682,7 +697,7 @@ namespace recursion_test_memberfunction {
                 peano::add<value<b, RE>, value<a, RE>>, RE 
             >(); };
             static auto _3() { return Assign<c,
-                peano::leq<value<a, RE>, peano::Five>, RE
+                peano::leq<value<a, RE>, peano::_5>, RE
             >(); };
             using _4 = decltype(_1());
             using _5 = decltype(_2());
@@ -710,8 +725,8 @@ namespace recursion_test_delayed {
     struct b {};
     struct c {};
     struct d {};
-    run_line : Assign<a, peano::Zero, RE> {};
-    run_line : Assign<b, peano::Zero, RE> {};
+    run_line : Assign<a, peano::_0, RE> {};
+    run_line : Assign<b, peano::_0, RE> {};
     run_line : Assign<c, ctstd::True, RE> {};
 
 
@@ -725,7 +740,7 @@ namespace recursion_test_delayed {
                 peano::add<value<b, RE>, value<a, RE>>, RE 
             >,
             Assign<c,
-                peano::leq<value<a, RE>, peano::Five>, RE
+                peano::leq<value<a, RE>, peano::_5>, RE
             >
         {};
     };
@@ -750,10 +765,10 @@ namespace big_recursion_test {
     struct b {};
     struct c {};
 
-    run_line: Assign<a, peano::Seven, RE> {};
+    run_line: Assign<a, peano::_7, RE> {};
     // 5 > 16 > 8 > 4 > 2 > 1
     // 7 > 22 > 11 > 34 > 17 > 52 > 26 > 13 > 40 > 20 > 10 > 5 > 16 > 8 > 4 > 2 > 1
-    run_line: Assign<b, peano::Zero, RE> {};
+    run_line: Assign<b, peano::_0, RE> {};
     run_line: Assign<c, ctstd::True, RE> {};
 
     struct CollatzStep {
@@ -762,21 +777,21 @@ namespace big_recursion_test {
             if_else<
                 ctstd::is_same<
                     peano::remainder<
-                        value<a, RE>, peano::Two
+                        value<a, RE>, peano::_2
                     >, 
-                    peano::Zero
+                    peano::_0
                 >,
                 Assignment<a>,
                 peano::div<
-                    value<a, RE>, peano::Two
+                    value<a, RE>, peano::_2
                 >,
                 peano::Succ<peano::mult<
-                    value<a, RE>, peano::Three
+                    value<a, RE>, peano::_3
                 >>,
                 RE
             >,
             Assign<b, peano::Succ<value<b, RE>>, RE>,
-            Assign<c, ctstd::Not<ctstd::is_same<value<a, RE>, peano::One>>, RE>
+            Assign<c, ctstd::Not<ctstd::is_same<value<a, RE>, peano::_1>>, RE>
         {};
     };
 
