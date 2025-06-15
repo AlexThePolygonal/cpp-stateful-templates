@@ -1,10 +1,10 @@
 # C++ Stateful Metaprogramming can be made into an imperative language
 
 Since 2015, it has been known that templates in C++ admit _state_, in the sense that there exist well-defined `constexpr` functions, the outputs of which change depending on the current state of the program.
-For example, there exists a function `next` such that the code below compiles.
+For example, it is possible to implement a constexpr function `next` such that the code below compiles.
 ```cpp
-template <class _ = ...>
-constexpr int next() { ... }
+template <class _ = /* implementation details */>
+constexpr int next() { /*implementation*/ } 
 
 // next has a different value each time even though it's a constant expression
 static_assert(next<>() == 1);
@@ -34,12 +34,11 @@ The way that the language works can be seen in the [tests.hpp](https://github.co
 
 ### ```namespace type_var```
 
-The primitive stateful operations are defined in the namespace `type_var`.
+The primitive stateful operations are defined in the namespace `type_var`. 
 
 In the stateful metaprogramming paradigm, each type name can be thought of as a _variable_ which refers to another entity, similar to how variables work in Python. Because C++ template parameters themselves are not type-restricted, there are effectively no conditions on what a 'variable' can refer to.
 For example:
 ```cpp
-
 struct a{}; // this declares a new variable `a`
 
 // this declares a new variable `b`;
@@ -49,7 +48,7 @@ struct b : a {
     void d() {};
 };
 
-// both d and d::e are both variables
+// both d and d::e are variables
 struct d {
     struct e {};
 };
@@ -57,7 +56,6 @@ struct d {
 
 A _function primitive_ is either a template class or a using declaration that instantiates a template. By the _execution of a function_ I mean the instantiation of the templates involved, including those in its parent classes, member types/aliases and member functions.
 ```cpp
-
 // Foo is a function
 template <class T, class _>
 struct Foo : ... {};
@@ -71,7 +69,6 @@ struct call_foo_2 : Foo<bool, decltype([](){})> {};
 
 A _lambda function_ is a typename which has a special member template `__call__`, which is a function primitive. 
 ```cpp
-
 // Bar is a lambda function
 struct Bar {
     template <class T, class _>
@@ -79,18 +76,16 @@ struct Bar {
 };
 ```
 
-The final template argument to these 'functions' must always be `decltype([](){})`, and it is obligatory to write it out explicitly.
+All function have a final template argument `class _`. It must always be `decltype([](){})`, and it is obligatory to write it out explicitly. The C++20 standard, 7.5.5.1, says: The type of a lambda-expression [...] is a _unique_, unnamed non-union class type.
+Because of this, each occurrence of `decltype([](){})` must have a different type, forcing the compiler to re-instantiate the template. Otherwise the compiler, assuming that stateful templates don't exist, will re-use the earlier template instantiations with no changes to the global state.
 
-The C++20 standard, 7.5.5.1, says: The type of a lambda-expression [...] is a _unique_, unnamed non-union class type.
-Because of this, each occurrence of `decltype([](){})` must have a different type.
-Without this unique argument, your metaprogram won't have any mutating state.
-For readability, I use the the macro `RE` instead.
+For readability, I use the macro `#define RE decltype([](){})` instead.
 
 By default, each variable contains the special value `ctstd::None`.
-To assign a different value to a 'variable', instantiate the `type_var::Assign` template class. Ensure that the final template argument is `decltype([](){})`.
+To assign a different value to a 'variable', instantiate the `type_var::Assign` template class. Ensure that the final template argument is `RE`.
 
 For example, 
-```c++
+```cpp
 #define RE decltype([](){})
 
 // we declare a variable
@@ -107,7 +102,7 @@ struct do_assign2 : type_var::Assign<a, void, RE> {};
 The current value of a variable `struct a {};` can be retrieved using `value<a, decltype([](){})>`. 
 
 Example:
-```c++
+```cpp
 #define RE decltype([](){})
 using namespace type_var;
 
@@ -147,7 +142,6 @@ Keep in mind that unlike traditional programming, in the metaprogramming paradig
 Assignments to the variable `T` can also be performed by a lambda function `Assignment<T>`.
 
 ```cpp
-
 struct a {};
 
 using Func = Assignment<a>;
@@ -164,7 +158,7 @@ static_assert(
 This pattern becomes particularly useful when implementing control flow mechanisms.
 
 In the tests, I use a special macro `run_line` to execute the functions.
-```c++
+```cpp
 template <class> struct __run_line {};
 
 // run_line expands to an _explicit template instantiation_ of __run_line
@@ -186,7 +180,7 @@ The `Delayed<Func>` lambda function wraps another lambda function `Func` within 
 
 The function `if_<cond, Func, Args, _>` does exactly what you'd expect. If `cond` is `ctstd::True`, then `Func` will be called with the argument `Args`, and the last argument is always `decltype([](){})`. To pass multiple arguments to Func, they should be bundled into an Argpass<...> template, which Func would then need to unpack.
 
-The function `if_else` is analogous. If the condition is `True`, it will call `Func` with `ArgsIfTrue`, if the condition is `False`, it will call it `Func` with `ArgsIfFalse`.
+The function `if_else` is analogous. If the condition is `True`, it will call `Func` with `ArgsIfTrue`, if the condition is `False`, it will call `Func` with `ArgsIfFalse`.
 
 To reiterate, the call
 ```cpp 
@@ -199,8 +193,8 @@ if (true) {
 }
 ```
 
-The DoWhile function primitive operates on a similar principle.
-It will repeatedly call Func (with empty arguments, or predefined arguments if designed so) as long as value<StopCondVar, RE> evaluates to ctstd::True.
+The `DoWhile<stop_condition, Func>` function primitive operates on a similar principle.
+It will repeatedly call the function `Func` (with empty arguments) as long as the value of the variable `stop_condition` evaluates to `ctstd::True`.
 The code 
 ```cpp
 using _1 = DoWhile<is_nonempty, Foo, RE>;
@@ -240,7 +234,7 @@ The following helper templates are provided for constructing functions that acce
 
 ### Function execution behaviour
 
-Stateful metaprogramming is not an intended feature of C++. Standard C++ implicitly assumes templates are stateless, and compilers have no obligation to instantiate templates in a specific order that would preserve stateful semantics. Because of it, most of the code in this repository is UB.
+Stateful metaprogramming is not an intended feature of C++. Standard C++ implicitly assumes templates are stateless, and compilers have no obligation to instantiate templates in a specific order that would preserve stateful semantics. As a result, most of the code in this repository is UB.
 
 To be exact, the standard doesn't give any information on the order in which different templates have to be instantiated, as it assumes that it cannot matter. 
 
@@ -252,7 +246,6 @@ struct do :
     Foo<RE>, // clang always instantiates Foo, starting with its parent classes 
     Bar<RE> // Then, clang instantiates Bar in the same way
 {};
-
 ```
 
 GCC behaves in a bizarre way. It behaves identically to Clang, except when instantiating parent template classes, it sometimes evaluates all of the "simple-looking" arguments, then processes the rest sequentially. I was, unfortunately, unable to find a description of the heuristics that cause this behaviour.
