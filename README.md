@@ -232,7 +232,7 @@ The following helper templates are provided for constructing functions that acce
 - `Lambda` transforms a function with multiple arguments into a lambda function which accepts a single Argpass.
 
 
-### Function execution behaviour
+### Ordering semantics
 
 Stateful metaprogramming is not an intended feature of C++. Standard C++ implicitly assumes templates are stateless, and compilers have no obligation to instantiate templates in a specific order that would preserve stateful semantics. As a result, most of the code in this repository is UB.
 
@@ -269,8 +269,24 @@ This function is a single step of the loop which is used to compute the sum of t
 On GCC, the "simple" templates `add<a, _1, RE>` and `add<b, a, RE>` are resolved fully before any of the `Assign` operations are processed. In other words, the `value<a, RE>` lookups are resolved upfront based on the state before any of the `Assign`s take effect.
 Consequently, the assignments operate on stale data.
 
+### Uniqueness issues
+
+Normally, one would expect that explicitly writing out `RE` each time is unnecessary, as it can just be the default argument, like this:
+```cpp
+template <class Var, class _ = decltype([](){})>
+using value = detail::ValueImpl<Var, _>::value;
+```
+Each time the template is instantiated, a new lambda type must be used.
+However, Clang might decide to ignore its obligations and re-use the same lambda type in a new template, probably because the type `ValueImpl<...>::value` does not depend on `_`. I expect this to be a Clang bug, however, I was unable to find a way to trigger it without using stateful loops, and the sequencing of template instantiations in them is technically UB.
+
+Debugging this has been a nighmare, because, as you might have noticed in the previous section, template instantiations aren't sequenced robustly.
+
 ## Implementation details
 
 The method was discovered long ago, and there are several blogposts detailing the key idea, «friend injection». [This blogpost](https://mc-deltat.github.io/articles/stateful-metaprogramming-cpp20) has a list of references for those interested. I also recommend reading [this](https://b.atch.se/posts/non-constant-constant-expressions/) as an introduction.
 
 TODO
+
+Normally, template functions don't have state, because in a context like `struct a<b,c,d> {};`, 
+
+However, 
