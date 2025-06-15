@@ -10,29 +10,14 @@ static_assert(__cplusplus >= 202002L);
 
 
 namespace ctstd {
-
+    
     struct None {};
 
+    namespace detail {struct IsBoolean {};};
+    struct True : detail::IsBoolean {};
+    struct False : detail::IsBoolean {};
 
-    struct True {};
-    struct False {};
-
-    namespace detail {
-        template <class T>
-        struct ToBoolImpl {
-        };
-        template <>
-        struct ToBoolImpl<True> {
-            static constexpr bool value = true;
-        };
-        template <>
-        struct ToBoolImpl<False> {
-            static constexpr bool value = false;
-        };
-    };
-    template <class T>
-    static constexpr bool to_bool = detail::ToBoolImpl<T>::value;
-
+    
     namespace detail {
         template <class T, class U>
         struct is_same_impl {
@@ -61,49 +46,81 @@ namespace ctstd {
     template<typename Base, typename Derived>
     using is_base_of = decltype(detail::test_is_base_of<Base, Derived>(0));
 
+
+
+
+    template <class T>
+    using is_boolean = ctstd::is_base_of<detail::IsBoolean, T>;
+
+
     namespace detail {
         template <class T>
-        struct NotImpl {};
+        struct ToBoolImpl {
+        };
+        template <>
+        struct ToBoolImpl<True> {
+            static constexpr bool value = true;
+        };
+        template <>
+        struct ToBoolImpl<False> {
+            static constexpr bool value = false;
+        };
+    };
+    template <class T>
+    static constexpr bool to_bool = detail::ToBoolImpl<T>::value;
+
+    namespace detail {
+        template <class T>
+        struct NotImpl_ {};
 
         template <>
-        struct NotImpl<True> { using value = False; };
+        struct NotImpl_<True> { using value = False; };
         template <>
-        struct NotImpl<False> { using value = True; };
+        struct NotImpl_<False> { using value = True; };
 
         template <class T, class U>
-        struct AndImpl {};
+        struct AndImpl_ {};
     
         template <>
-        struct AndImpl<True, True> { using value = True; };
+        struct AndImpl_<True, True> { using value = True; };
         template <>
-        struct AndImpl<True, False> { using value = False; };
+        struct AndImpl_<True, False> { using value = False; };
         template <>
-        struct AndImpl<False, True> { using value = False; };
+        struct AndImpl_<False, True> { using value = False; };
         template <>
-        struct AndImpl<False, False> { using value = False; };
+        struct AndImpl_<False, False> { using value = False; };
 
         template <class T, class U>
-        struct OrImpl {};
+        struct OrImpl_ {};
         template <>
-        struct OrImpl<True, True> { using value = True; };
+        struct OrImpl_<True, True> { using value = True; };
         template <>
-        struct OrImpl<True, False> { using value = True; };
+        struct OrImpl_<True, False> { using value = True; };
         template <>
-        struct OrImpl<False, True> { using value = True; };
+        struct OrImpl_<False, True> { using value = True; };
         template <>
-        struct OrImpl<False, False> { using value = False; };
+        struct OrImpl_<False, False> { using value = False; };
 
         template <class T, class U>
-        struct XorImpl {};
+        struct XorImpl_ {};
         template <>
-        struct XorImpl<True, True> { using value = False; };
+        struct XorImpl_<True, True> { using value = False; };
         template <>
-        struct XorImpl<True, False> { using value = True; };
+        struct XorImpl_<True, False> { using value = True; };
         template <>
-        struct XorImpl<False, True> { using value = True; };
+        struct XorImpl_<False, True> { using value = True; };
         template <>
-        struct XorImpl<False, False> { using value = False; };
-    };  
+        struct XorImpl_<False, False> { using value = False; };
+
+        template <class T>
+        using Not_ = typename ctstd::detail::NotImpl_<T>::value;
+        template <class T, class U>
+        using And_ = typename ctstd::detail::AndImpl_<T, U>::value;
+        template <class T, class U>
+        using Or_ = typename ctstd::detail::OrImpl_<T, U>::value;
+        template <class T, class U>
+        using Xor_ = typename ctstd::detail::XorImpl_<T, U>::value;
+    };
 
     template <class T>
     [[maybe_unused]] auto remove_nodiscard (T&& t) { return std::forward<T>(t); }

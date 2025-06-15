@@ -176,14 +176,89 @@ namespace ctstd {
     using eq = typename detail::EqImpl<T, U, peano::is_peano_integer<T>, peano::is_peano_integer<U>, _>::value;
 
 
-    //     // Custom logical operations
+    /*  
+    template <class T>
+        using Not_ = typename ctstd::detail::NotImpl_<T>::value;
+        template <class T, class U>
+        using And_ = typename ctstd::detail::AndImpl_<T, U>::value;
+        template <class T, class U>
+        using Or_ = typename ctstd::detail::OrImpl_<T, U>::value;
+        template <class T, class U>
+        using Xor_ = typename ctstd::detail::XorImpl_<T, U>::value;
+    */
+    namespace detail {
+        template <class T, class TisRV, class _>
+        struct NotImpl {
+            using value = detail::Not_<type_var::value<T, _>>;
+        };
+        template <class T, class _>
+        struct NotImpl<T, True, _> {
+            using value = detail::Not_<T>;
+        };
+    };
+    template <class T, class _>
+    using Not = typename detail::NotImpl<T, is_boolean<T>, _>::value;
 
-    // template <class T>
-    // using Not = typename detail::NotImpl<T>::value;
-    // template <class T, class U>
-    // using And = typename detail::AndImpl<T, U>::value;
-    // template <class T, class U>
-    // using Or = typename detail::OrImpl<T, U>::value;
-    // template <class T, class U>
-    // using Xor = typename detail::XorImpl<T, U>::value;
+    namespace detail {
+        template <class T, class U, class TisRV, class UisRV, class _>
+        struct AndImpl {
+            using value = detail::And_<type_var::value<T, _>, type_var::value<U, _>>;
+        };
+        template <class T, class U, class _>
+        struct AndImpl<T, U, ctstd::False, ctstd::True, _> {
+            using value = detail::And_<type_var::value<T, _>, U>;
+        };
+        template <class T, class U, class _>
+        struct AndImpl<T, U, ctstd::True, ctstd::False, _> {
+            using value = detail::And_<T, type_var::value<U, _>>;
+        };
+        template <class T, class U, class _>
+        struct AndImpl<T, U, ctstd::True, ctstd::True, _> {
+            using value = detail::And_<T, U>;
+        };
+    };
+    template <class T, class U, class _>
+    using And = typename detail::AndImpl<T, U, is_boolean<T>, is_boolean<U>, _>::value;
+
+    namespace detail {
+        template <class T, class U, class TisRV, class UisRV, class _>
+        struct OrImpl {
+            using value = detail::Or_<type_var::value<T, _>, type_var::value<U, _>>;
+        };
+        template <class T, class U, class _>
+        struct OrImpl<T, U, ctstd::False, ctstd::True, _> {
+            using value = detail::Or_<type_var::value<T, _>, U>;
+        };
+        template <class T, class U, class _>
+        struct OrImpl<T, U, ctstd::True, ctstd::False, _> {
+            using value = detail::Or_<T, type_var::value<U, _>>;
+        };
+        template <class T, class U, class _>
+        struct OrImpl<T, U, ctstd::True, ctstd::True, _> {
+            using value = detail::Or_<T, U>;
+        };
+    };
+    template <class T, class U, class _>
+    using Or = typename detail::OrImpl<T, U, is_boolean<T>, is_boolean<U>, _>::value;
+
+    namespace detail {
+        template <class T, class U, class TisRV, class UisRV, class _>
+        struct XorImpl {
+            using value = detail::Xor_<type_var::value<T, _>, type_var::value<U, _>>;
+        };
+        template <class T, class U, class _>
+        struct XorImpl<T, U, ctstd::False, ctstd::True, _> {
+            using value = detail::Xor_<type_var::value<T, _>, U>;
+        };
+        template <class T, class U, class _>
+        struct XorImpl<T, U, ctstd::True, ctstd::False, _> {
+            using value = detail::Xor_<T, type_var::value<U, _>>;
+        };
+        template <class T, class U, class _>
+        struct XorImpl<T, U, ctstd::True, ctstd::True, _> {
+            using value = detail::Xor_<T, U>;
+        };
+    };
+    template <class T, class U, class _>
+    using Xor = typename detail::XorImpl<T, U, is_boolean<T>, is_boolean<U>, _>::value;
 };

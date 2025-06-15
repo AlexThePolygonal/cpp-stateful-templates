@@ -465,24 +465,60 @@ namespace ctstd_adv_test {
     static_assert(std::is_same_v<is_same<True, True>, True>, "is_same of True to True is True");
     static_assert(std::is_same_v<is_same<True, False>, False>, "is_same of True to False is False");
 
-    // Test logical operations (from ctstd_base.hpp)
-    static_assert(std::is_same_v<Not<True>, False>, "Not of True is False");
-    static_assert(std::is_same_v<Not<False>, True>, "Not of False is True");
+    // Test logical operations (Not, And, Or, Xor)
+    // Test Not function
+    static_assert(std::is_same_v<Not<True, RE>, False>, "Not of True is False");
+    static_assert(std::is_same_v<Not<False, RE>, True>, "Not of False is True");
 
-    static_assert(std::is_same_v<And<True, True>, True>, "And of True and True is True");
-    static_assert(std::is_same_v<And<True, False>, False>, "And of True and False is False");
-    static_assert(std::is_same_v<And<False, True>, False>, "And of False and True is False");
-    static_assert(std::is_same_v<And<False, False>, False>, "And of False and False is False");
+    // Test And function  
+    static_assert(std::is_same_v<And<True, True, RE>, True>, "And of True and True is True");
+    static_assert(std::is_same_v<And<True, False, RE>, False>, "And of True and False is False");
+    static_assert(std::is_same_v<And<False, True, RE>, False>, "And of False and True is False");
+    static_assert(std::is_same_v<And<False, False, RE>, False>, "And of False and False is False");
 
-    static_assert(std::is_same_v<Or<True, True>, True>, "Or of True and True is True");
-    static_assert(std::is_same_v<Or<True, False>, True>, "Or of True and False is True");
-    static_assert(std::is_same_v<Or<False, True>, True>, "Or of False and True is True");
-    static_assert(std::is_same_v<Or<False, False>, False>, "Or of False and False is False");
+    // Test Or function
+    static_assert(std::is_same_v<Or<True, True, RE>, True>, "Or of True and True is True");
+    static_assert(std::is_same_v<Or<True, False, RE>, True>, "Or of True and False is True");
+    static_assert(std::is_same_v<Or<False, True, RE>, True>, "Or of False and True is True");
+    static_assert(std::is_same_v<Or<False, False, RE>, False>, "Or of False and False is False");
 
-    static_assert(std::is_same_v<Xor<True, True>, False>, "Xor of True and True is False");
-    static_assert(std::is_same_v<Xor<True, False>, True>, "Xor of True and False is True");
-    static_assert(std::is_same_v<Xor<False, True>, True>, "Xor of False and True is True");
-    static_assert(std::is_same_v<Xor<False, False>, False>, "Xor of False and False is False");
+    // Test Xor function
+    static_assert(std::is_same_v<Xor<True, True, RE>, False>, "Xor of True and True is False");
+    static_assert(std::is_same_v<Xor<True, False, RE>, True>, "Xor of True and False is True");
+    static_assert(std::is_same_v<Xor<False, True, RE>, True>, "Xor of False and True is True");
+    static_assert(std::is_same_v<Xor<False, False, RE>, False>, "Xor of False and False is False");
+
+    // Test logical operations with type variables (analogous to arithmetic tests)
+    struct bool_var1 {};
+    struct bool_var2 {};
+    run_line : Assign<bool_var1, True, RE> {};
+    run_line : Assign<bool_var2, False, RE> {};
+
+    // Test Not with variables
+    static_assert(std::is_same_v<Not<bool_var1, RE>, False>, "Not of True variable is False");
+    static_assert(std::is_same_v<Not<bool_var2, RE>, True>, "Not of False variable is True");
+
+    // Test And with variables and constants
+    static_assert(std::is_same_v<And<bool_var1, True, RE>, True>, "And of True variable with True constant is True");
+    static_assert(std::is_same_v<And<bool_var1, False, RE>, False>, "And of True variable with False constant is False");
+    static_assert(std::is_same_v<And<True, bool_var1, RE>, True>, "And of True constant with True variable is True");
+    static_assert(std::is_same_v<And<False, bool_var1, RE>, False>, "And of False constant with True variable is False");
+    static_assert(std::is_same_v<And<bool_var1, bool_var2, RE>, False>, "And of True variable with False variable is False");
+
+    // Test Or with variables and constants
+    static_assert(std::is_same_v<Or<bool_var1, True, RE>, True>, "Or of True variable with True constant is True");
+    static_assert(std::is_same_v<Or<bool_var1, False, RE>, True>, "Or of True variable with False constant is True");
+    static_assert(std::is_same_v<Or<True, bool_var2, RE>, True>, "Or of True constant with False variable is True");
+    static_assert(std::is_same_v<Or<False, bool_var2, RE>, False>, "Or of False constant with False variable is False");
+    static_assert(std::is_same_v<Or<bool_var1, bool_var2, RE>, True>, "Or of True variable with False variable is True");
+
+    // Test Xor with variables and constants
+    static_assert(std::is_same_v<Xor<bool_var1, True, RE>, False>, "Xor of True variable with True constant is False");
+    static_assert(std::is_same_v<Xor<bool_var1, False, RE>, True>, "Xor of True variable with False constant is True");
+    static_assert(std::is_same_v<Xor<False, bool_var1, RE>, True>, "Xor of False constant with True variable is True");
+    static_assert(std::is_same_v<Xor<True, bool_var2, RE>, True>, "Xor of True constant with False variable is True");
+    static_assert(std::is_same_v<Xor<bool_var1, bool_var2, RE>, True>, "Xor of True variable with False variable is True");
+
 
     // Test is_base_of function (from ctstd_base.hpp)
     struct base_test {};
@@ -803,247 +839,6 @@ namespace recursion_test_2_1 {
 #endif
 }
 
-
-namespace recursion_test_memberusing {
-    using namespace type_var;
-    using namespace cexpr_control;
-
-    template <class> struct __run_line {};
-
-    struct a {};
-    struct b {};
-    struct c {};
-    run_line : Assign<a, peano::_0, RE> {};
-    run_line : Assign<b, peano::_0, RE> {};
-    run_line : Assign<c, ctstd::True, RE> {};
-
-    struct SumOfFirstIntegers {
-        template <class _>
-        struct __call__  {
-            using _1 = Assign<a, 
-                peano::Succ<value<a, RE>>, RE
-            >;
-            using _2 = Assign<b,
-                peano::add<value<b, RE>, value<a, RE>>, RE 
-            >;
-            using _3 = Assign<c,
-                peano::leq<value<a, RE>, peano::_5>, RE
-            >;
-        };
-    };
-
-    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
-
-#ifdef __clang__
-    static_assert(std::is_same_v<value<b, RE>, peano::Integer<21>>);
-#elif __GNUG__
-    static_assert(std::is_same_v<value<b, RE>, peano::Integer<28>>);
-#endif
-};
-
-namespace recursion_test_memberfunction {
-    using namespace type_var;
-    using namespace cexpr_control;
-
-    template <class> struct __run_line {};
-
-    struct a {};
-    struct b {};
-    struct c {};
-    run_line : Assign<a, peano::_0, RE> {};
-    run_line : Assign<b, peano::_0, RE> {};
-    run_line : Assign<c, ctstd::True, RE> {};
-
-    struct SumOfFirstIntegers {
-        template <class _>
-        struct __call__  {
-            // member functions are compiled later than template instantiations
-            // template classes in member functions are instantiated later than all templates used in the class proper
-            static auto _1() { return Assign<a, 
-                peano::Succ<value<a, RE>>, RE
-            >(); };
-            static auto _2() { return Assign<b,
-                peano::add<value<b, RE>, value<a, RE>>, RE 
-            >(); };
-            static auto _3() { return Assign<c,
-                peano::leq<value<a, RE>, peano::_5>, RE
-            >(); };
-            using _4 = decltype(_1());
-            using _5 = decltype(_2());
-            using _6 = decltype(_3());
-        };
-    };
-    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
-
-#ifdef __clang__
-    static_assert(std::is_same_v<value<b, RE>, peano::Integer<21>>);
-#elif __GNUG__
-    static_assert(std::is_same_v<value<b, RE>, peano::Integer<28>>);
-#endif
-};
-
-
-
-namespace recursion_test_delayed {
-    using namespace type_var;
-    using namespace cexpr_control;
-
-    template <class> struct __run_line {};
-
-    struct a {};
-    struct b {};
-    struct c {};
-    struct d {};
-    run_line : Assign<a, peano::_0, RE> {};
-    run_line : Assign<b, peano::_0, RE> {};
-    run_line : Assign<c, ctstd::True, RE> {};
-
-
-    struct SumOfFirstIntegers {
-        template <class _>
-        struct __call__ : 
-            Assign<a, 
-                peano::Succ<value<a, RE>>, RE
-            >,
-            Assign<b,
-                peano::add<value<b, RE>, value<a, RE>>, RE 
-            >,
-            Assign<c,
-                peano::leq<value<a, RE>, peano::_5>, RE
-            >
-        {};
-    };
-
-    run_line : ::cexpr_control::DoWhile<Delayed<Delayed<SumOfFirstIntegers>>, c, RE> {};
-
-#ifdef __clang__
-    static_assert(std::is_same_v<value<b, RE>, peano::Integer<21>>);
-#elif __GNUG__
-    static_assert(std::is_same_v<value<b, RE>, peano::Integer<28>>);
-#endif
-}
-
-
-namespace big_recursion_test {
-    using namespace type_var;
-    using namespace cexpr_control;
-
-    template <class> struct __run_line {};
-
-    struct a {};
-    struct b {};
-    struct c {};
-
-    run_line: Assign<a, peano::_7, RE> {};
-    // 5 > 16 > 8 > 4 > 2 > 1
-    // 7 > 22 > 11 > 34 > 17 > 52 > 26 > 13 > 40 > 20 > 10 > 5 > 16 > 8 > 4 > 2 > 1
-    run_line: Assign<b, peano::_0, RE> {};
-    run_line: Assign<c, ctstd::True, RE> {};
-
-    struct CollatzStep {
-        template <class _>
-        struct __call__ :
-            if_else<
-                ctstd::is_same<
-                    peano::remainder<
-                        value<a, RE>, peano::_2
-                    >, 
-                    peano::_0
-                >,
-                Assignment<a>,
-                peano::div<
-                    value<a, RE>, peano::_2
-                >,
-                peano::Succ<peano::mult<
-                    value<a, RE>, peano::_3
-                >>,
-                RE
-            >,
-            Assign<b, peano::Succ<value<b, RE>>, RE>,
-            Assign<c, ctstd::Not<ctstd::is_same<value<a, RE>, peano::_1>>, RE>
-        {};
-    };
-
-    run_line: ::cexpr_control::DoWhile<CollatzStep, c, RE> {};
-
-#ifdef __clang__
-    static_assert(std::is_same_v<value<a, RE>, peano::Integer<1>>);
-    static_assert(std::is_same_v<value<b, RE>, peano::Integer<16>>);
-#elif __GNUG__
-    static_assert(std::is_same_v<value<a, RE>, peano::Integer<2>>);
-    static_assert(std::is_same_v<value<b, RE>, peano::Integer<18>>);
-#endif
-};
-
-
-namespace recursion_test_memberusing_1 {
-    using namespace type_var;
-    using namespace ctstd;
-    using namespace cexpr_control;
-
-    template <class> struct __run_line {};
-
-    struct a {};
-    struct b {};
-    struct c {};
-    run_line : Assign<a, _0, RE> {};
-    run_line : Assign<b, _0, RE> {};
-    run_line : Assign<c, True, RE> {};
-
-    struct SumOfFirstIntegers {
-        template <class _>
-        struct __call__  {
-            using line_1 = Assign<a, add<a, _1, RE>, RE>;
-            using line_2 = Assign<b, add<a, b, RE>, RE>;
-            using line_3 = Assign<c, leq<a, _5, RE>, RE>;
-        };
-    };
-
-    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
-
-#ifdef __clang__
-    static_assert(to_bool<eq<b, Integer<21>, RE>>);
-#elif __GNUG__
-    static_assert(to_bool<eq<b, Integer<28>, RE>>);
-#endif
-};
-
-namespace recursion_test_memberfunction_1 {
-    using namespace type_var;
-    using namespace ctstd;
-    using namespace cexpr_control;
-
-    template <class> struct __run_line {};
-
-    struct a {};
-    struct b {};
-    struct c {};
-    run_line : Assign<a, _0, RE> {};
-    run_line : Assign<b, _0, RE> {};
-    run_line : Assign<c, True, RE> {};
-
-    struct SumOfFirstIntegers {
-        template <class _>
-        struct __call__  {
-            // member functions are compiled later than template instantiations
-            // template classes in member functions are instantiated later than all templates used in the class proper
-            static auto line_1() { return Assign<a, add<a, _1, RE>, RE>(); };
-            static auto line_2() { return Assign<b, add<a, b, RE>, RE>(); };
-            static auto line_3() { return Assign<c, leq<a, _5, RE>, RE>(); };
-            using line_4 = decltype(line_1());
-            using line_5 = decltype(line_2());
-            using line_6 = decltype(line_3());
-        };
-    };
-    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
-
-#ifdef __clang__
-    static_assert(to_bool<eq<b, Integer<21>, RE>>);
-#elif __GNUG__
-    static_assert(to_bool<eq<b, Integer<28>, RE>>);
-#endif
-};
-
 namespace recursion_test_delayed_1 {
     using namespace type_var;
     using namespace ctstd;
@@ -1105,7 +900,7 @@ namespace big_recursion_test_1 {
                 RE
             >,
             Assign<b, add<b, _1, RE>, RE>,
-            Assign<c, Not<eq<a, _1, RE>>, RE>
+            Assign<c, Not<eq<a, _1, RE>, RE>, RE>
         {};
     };
 

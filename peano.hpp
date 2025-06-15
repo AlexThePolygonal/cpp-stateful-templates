@@ -2,17 +2,18 @@
 #include "ctstd_base.hpp"
 
 namespace peano {
-    struct IsPeanoInteger {};
-    struct Zero : IsPeanoInteger {
+
+    namespace detail { struct IsPeanoInteger {}; };
+    struct Zero : detail::IsPeanoInteger {
         using Prev = ctstd::None;
     };
     template <class T>
-    using is_peano_integer = ctstd::is_base_of<IsPeanoInteger, T>;
+    using is_peano_integer = ctstd::is_base_of<detail::IsPeanoInteger, T>;
 
 
     using _0 = Zero;
 
-    template <class T> struct Succ : IsPeanoInteger {
+    template <class T> struct Succ : detail::IsPeanoInteger {
         using Prev = T;
     };
 
