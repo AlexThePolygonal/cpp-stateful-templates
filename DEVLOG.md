@@ -14,6 +14,8 @@ the default argument might decide to get itself cached and stay the same in diff
 Normally, you'll never see it, but in some conditions, you will 
 So we always have to write `decltype([](){})` explicitly to force reinstantiations.
 
+Yes, you can't see this normally. Probably, it's a bug, but I don't know how to spot it without UB.
+
 #### Premature instantiation of templates with dummy parameters  
 
 One of the reasons why default arguments don't work is this:
@@ -36,7 +38,5 @@ So it goes.
 #### Immediate instantiation of simple templates
 
 You would expect that the compiler processes the template parent classes sequentially, from left to right. However, GCC is smarter. It processes them in two passes, and if it sees a simple template, that is, a template class with all of its arguments being non-template classes, it will instantiate it immediately. Otherwise, it defers the instantiation to the second pass. 
-
-For example
 
 So it goes.
