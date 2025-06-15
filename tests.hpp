@@ -1,6 +1,7 @@
 #include "type_var.hpp"
 #include "cexpr_control.hpp"
 #include "peano.hpp"
+#include "ctstd.hpp"
 #include <iostream>
 #include <array>
 
@@ -27,7 +28,7 @@ namespace prereqs {
     static_assert(is_base_of__boolean<a, d>::value, "d is derived from a");
     static_assert(is_base_of__boolean<b, b>::value, "b is derived from b");
     static_assert(!is_base_of__boolean<c, b>::value, "b isn't derived from c");
-    static_assert(!is_base_of__boolean<d, b>::value, "d isn't derived from b");
+    static_assert(!is_base_of__boolean<d, b>::value, "b isn't derived from d");
 };
 
 // testing whether the assignment mechanism works well with all types, including the special ones like void, const, references, etc.
@@ -377,6 +378,140 @@ namespace peano_order_test {
     static_assert(std::is_same_v<value<c, RE>, ctstd::False>);
 };
 
+namespace ctstd_adv_test {
+    using namespace type_var;
+    using namespace cexpr_control;
+    using namespace ctstd;
+
+    template <class> struct __run_line {};
+
+    // Test variables for all arithmetic and comparison operations
+    struct a {};
+    struct b {};
+    struct c {};
+    struct d {};
+
+    // Initialize test variables with different values
+    run_line : Assign<a, _2, RE> {};
+    run_line : Assign<b, _3, RE> {};
+    run_line : Assign<c, _5, RE> {};
+    run_line : Assign<d, _0, RE> {};
+
+    // Test mult function
+    static_assert(std::is_same_v<mult<a, _2, RE>, _4>, "multiplying variable by constant works correctly");
+    static_assert(std::is_same_v<mult<_2, a, RE>, _4>, "multiplying constant by variable works correctly");
+    static_assert(std::is_same_v<mult<_2, _3, RE>, _6>, "multiplying constants works correctly");
+    static_assert(std::is_same_v<mult<a, b, RE>, _6>, "multiplying two variables works correctly");
+    static_assert(std::is_same_v<mult<a, d, RE>, _0>, "multiplying by zero works correctly");
+    static_assert(std::is_same_v<mult<d, a, RE>, _0>, "zero times variable works correctly");
+
+    // Test divid function
+    static_assert(std::is_same_v<divide<c, a, RE>, _2>, "dividing variable by variable works correctly");
+    static_assert(std::is_same_v<divide<c, _2, RE>, _2>, "dividing variable by constant works correctly");
+    static_assert(std::is_same_v<divide<_6, a, RE>, _3>, "dividing constant by variable works correctly");
+    static_assert(std::is_same_v<divide<_6, _3, RE>, _2>, "dividing constants works correctly");
+    static_assert(std::is_same_v<divide<a, a, RE>, _1>, "dividing variable by itself works correctly");
+    static_assert(std::is_same_v<divide<d, _1, RE>, _0>, "dividing zero by constant works correctly");
+
+    // Test remainder function
+    static_assert(std::is_same_v<remainder<c, a, RE>, _1>, "remainder of variable by variable works correctly");
+    static_assert(std::is_same_v<remainder<c, _2, RE>, _1>, "remainder of variable by constant works correctly");
+    static_assert(std::is_same_v<remainder<_7, a, RE>, _1>, "remainder of constant by variable works correctly");
+    static_assert(std::is_same_v<remainder<_7, _3, RE>, _1>, "remainder of constants works correctly");
+    static_assert(std::is_same_v<remainder<a, a, RE>, _0>, "remainder of variable by itself is zero");
+    static_assert(std::is_same_v<remainder<d, _1, RE>, _0>, "remainder of zero by constant is zero");
+
+    // Test minus function
+    static_assert(std::is_same_v<minus<c, a, RE>, _3>, "subtracting variable from variable works correctly");
+    static_assert(std::is_same_v<minus<c, _2, RE>, _3>, "subtracting constant from variable works correctly");
+    static_assert(std::is_same_v<minus<_5, a, RE>, _3>, "subtracting variable from constant works correctly");
+    static_assert(std::is_same_v<minus<_5, _2, RE>, _3>, "subtracting constants works correctly");
+    static_assert(std::is_same_v<minus<a, a, RE>, _0>, "subtracting variable from itself gives zero");
+    static_assert(std::is_same_v<minus<a, d, RE>, _2>, "subtracting zero from variable gives the variable");
+
+    // Test leq (less than or equal) function
+    static_assert(std::is_same_v<leq<a, b, RE>, True>, "leq of smaller variable to larger variable is True");
+    static_assert(std::is_same_v<leq<b, a, RE>, False>, "leq of larger variable to smaller variable is False");
+    static_assert(std::is_same_v<leq<a, _2, RE>, True>, "leq of variable to equal constant is True");
+    static_assert(std::is_same_v<leq<a, _1, RE>, False>, "leq of variable to smaller constant is False");
+    static_assert(std::is_same_v<leq<_2, a, RE>, True>, "leq of constant to equal variable is True");
+    static_assert(std::is_same_v<leq<_3, a, RE>, False>, "leq of larger constant to variable is False");
+    static_assert(std::is_same_v<leq<_2, _3, RE>, True>, "leq of smaller constant to larger constant is True");
+    static_assert(std::is_same_v<leq<_3, _2, RE>, False>, "leq of larger constant to smaller constant is False");
+    static_assert(std::is_same_v<leq<_2, _2, RE>, True>, "leq of constant to itself is True");
+    static_assert(std::is_same_v<leq<a, a, RE>, True>, "leq of variable to itself is True");
+    static_assert(std::is_same_v<leq<d, a, RE>, True>, "leq of zero to positive variable is True");
+    static_assert(std::is_same_v<leq<a, d, RE>, False>, "leq of positive variable to zero is False");
+
+    // Test eq (equality) function
+    static_assert(std::is_same_v<eq<a, a, RE>, True>, "eq of variable to itself is True");
+    static_assert(std::is_same_v<eq<a, b, RE>, False>, "eq of different variables is False");
+    static_assert(std::is_same_v<eq<a, _2, RE>, True>, "eq of variable to equal constant is True");
+    static_assert(std::is_same_v<eq<a, _3, RE>, False>, "eq of variable to different constant is False");
+    static_assert(std::is_same_v<eq<_2, a, RE>, True>, "eq of constant to equal variable is True");
+    static_assert(std::is_same_v<eq<_3, a, RE>, False>, "eq of constant to different variable is False");
+    static_assert(std::is_same_v<eq<_2, _2, RE>, True>, "eq of constant to itself is True");
+    static_assert(std::is_same_v<eq<_2, _3, RE>, False>, "eq of different constants is False");
+    static_assert(std::is_same_v<eq<b, c, RE>, False>, "eq of different variables with different values is False");
+    static_assert(std::is_same_v<eq<d, _0, RE>, True>, "eq of zero variable to zero constant is True");
+    static_assert(std::is_same_v<eq<_0, d, RE>, True>, "eq of zero constant to zero variable is True");
+    static_assert(std::is_same_v<eq<d, d, RE>, True>, "eq of zero variable to itself is True");
+
+    // Test is_same function (from ctstd_base.hpp)
+    static_assert(std::is_same_v<is_same<a, a>, True>, "is_same of variable to itself is True");
+    static_assert(std::is_same_v<is_same<a, b>, False>, "is_same of different variables is False");
+    static_assert(std::is_same_v<is_same<_2, _2>, True>, "is_same of constant to itself is True");
+    static_assert(std::is_same_v<is_same<_2, _3>, False>, "is_same of different constants is False");
+    static_assert(std::is_same_v<is_same<True, True>, True>, "is_same of True to True is True");
+    static_assert(std::is_same_v<is_same<True, False>, False>, "is_same of True to False is False");
+
+    // Test logical operations (from ctstd_base.hpp)
+    static_assert(std::is_same_v<Not<True>, False>, "Not of True is False");
+    static_assert(std::is_same_v<Not<False>, True>, "Not of False is True");
+
+    static_assert(std::is_same_v<And<True, True>, True>, "And of True and True is True");
+    static_assert(std::is_same_v<And<True, False>, False>, "And of True and False is False");
+    static_assert(std::is_same_v<And<False, True>, False>, "And of False and True is False");
+    static_assert(std::is_same_v<And<False, False>, False>, "And of False and False is False");
+
+    static_assert(std::is_same_v<Or<True, True>, True>, "Or of True and True is True");
+    static_assert(std::is_same_v<Or<True, False>, True>, "Or of True and False is True");
+    static_assert(std::is_same_v<Or<False, True>, True>, "Or of False and True is True");
+    static_assert(std::is_same_v<Or<False, False>, False>, "Or of False and False is False");
+
+    static_assert(std::is_same_v<Xor<True, True>, False>, "Xor of True and True is False");
+    static_assert(std::is_same_v<Xor<True, False>, True>, "Xor of True and False is True");
+    static_assert(std::is_same_v<Xor<False, True>, True>, "Xor of False and True is True");
+    static_assert(std::is_same_v<Xor<False, False>, False>, "Xor of False and False is False");
+
+    // Test is_base_of function (from ctstd_base.hpp)
+    struct base_test {};
+    struct derived_test : base_test {};
+    struct unrelated_test {};
+
+    static_assert(std::is_same_v<is_base_of<base_test, derived_test>, True>, "is_base_of works for derived class");
+    static_assert(std::is_same_v<is_base_of<base_test, base_test>, True>, "is_base_of works for same class");
+    static_assert(std::is_same_v<is_base_of<base_test, unrelated_test>, False>, "is_base_of works for unrelated class");
+    static_assert(std::is_same_v<is_base_of<derived_test, base_test>, False>, "is_base_of is not symmetric");
+
+    // Test complex expressions combining multiple operations
+    struct e {};
+    struct f {};
+    run_line : Assign<e, add<mult<a, b, RE>, _1, RE>, RE> {};  // e = (a * b) + 1 = (2 * 3) + 1 = 7
+    run_line : Assign<f, minus<c, divide<e, a, RE>, RE>, RE> {}; // f = c - (e / a) = 5 - (7 / 2) = 5 - 3 = 2
+
+    static_assert(std::is_same_v<value<e, RE>, _7>, "complex arithmetic expression works correctly");
+    static_assert(std::is_same_v<value<f, RE>, _2>, "nested arithmetic operations work correctly");
+
+    // Test edge cases and boundary conditions
+    static_assert(std::is_same_v<add<_0, _0, RE>, _0>, "adding zero to zero gives zero");
+    static_assert(std::is_same_v<mult<_1, _5, RE>, _5>, "multiplying by one gives original value");
+    static_assert(std::is_same_v<divide<_5, _1, RE>, _5>, "dividing by one gives original value");
+    static_assert(std::is_same_v<remainder<_3, _5, RE>, _3>, "remainder when dividend is smaller than divisor");
+    static_assert(std::is_same_v<minus<_3, _0, RE>, _3>, "subtracting zero gives original value");
+    static_assert(std::is_same_v<leq<_0, _0, RE>, True>, "zero is less than or equal to zero");
+};
+
 namespace using_order_test {
     using namespace type_var;
     using namespace cexpr_control;
@@ -634,6 +769,40 @@ namespace recursion_test_2 {
     static_assert(std::is_same_v<value<b, RE>, peano::Integer<28>>);
 #endif
 }
+
+namespace recursion_test_2_1 {
+    using namespace type_var;
+    using namespace ctstd;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {};
+    struct b {};
+    struct c {};
+    run_line : Assign<a, _0, RE> {};
+    run_line : Assign<b, _0, RE> {};
+    run_line : Assign<c, True, RE> {};
+
+
+    struct SumOfFirstIntegers {
+        template <class _>
+        struct __call__ : 
+            Assign<a, add<a, _1, RE>, RE>,
+            Assign<b, add<a, b, RE>, RE>,
+            Assign<c, leq<a, _5, RE>, RE>
+        {};
+    };
+
+    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
+
+#ifdef __clang__
+    static_assert(to_bool<eq<b, Integer<21>, RE>>);
+#elif __GNUG__
+    static_assert(to_bool<eq<b, Integer<28>, RE>>);
+#endif
+}
+
 
 namespace recursion_test_memberusing {
     using namespace type_var;

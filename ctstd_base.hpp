@@ -17,6 +17,21 @@ namespace ctstd {
     struct True {};
     struct False {};
 
+    namespace detail {
+        template <class T>
+        struct ToBoolImpl {
+        };
+        template <>
+        struct ToBoolImpl<True> {
+            static constexpr bool value = true;
+        };
+        template <>
+        struct ToBoolImpl<False> {
+            static constexpr bool value = false;
+        };
+    };
+    template <class T>
+    static constexpr bool to_bool = detail::ToBoolImpl<T>::value;
 
     namespace detail {
         template <class T, class U>
