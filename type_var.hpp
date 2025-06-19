@@ -31,30 +31,35 @@ static_assert(!std::is_same_v<decltype([](){}), decltype([](){})>, "decltype([](
 
 namespace type_var {
 
-    namespace detail {
+    namespace friend_injection {
         // A trivially-constructible container for T
-        // Used to force resolution of auto functions by `return Container<T>{}`
+        // Used in `return Container<T>{}` to make all classes trivially constructible
         template <class T, class _>
         struct Container : _ {
             using value = T;
         };
+        // Encapsulates `T` to avoid potential name clashes
         template <class T> class Addr {};
 
         // Declares friend functions comprising the global state
         template <class, int>
         struct Flag {
-            friend constexpr auto flag(Flag); // the return type of flag(Flag) encodes the data
+            // the return type of flag(Flag) encodes the value corresponding to T
+            friend constexpr auto flag(Flag);
         };
 
-        // Injects the definitions of friend functions comprising the global state
+        // Injects the definition of flag(Flag) into the global namespace
         template <
-            class T, int N, class Val
+            class T, // name of the "variable"
+            int N, // the current index of the flag
+            class Val // the value to assign to the "variable"
         >
         struct Writer {
             friend constexpr auto flag(Flag<T, N>) {
-                return Container<Val, ctstd::None>(); // The return type is the value of T
+                // The return type is the value of T
+                return Container<Val, ctstd::None>();
             }
-            constexpr static int value = N;
+            constexpr static int value = N; // needed to force the instantiation of Writer
         };
 
         // if the flag(Flag<T, N>) doesn't exist yet, create it, storing Val in it 
@@ -79,7 +84,7 @@ namespace type_var {
         // If the flag(Flag<T, N>) doesn't exist, return None
         template <class, int N = 0, class _>
         constexpr auto load_reader(float) {
-            return detail::Container<ctstd::None, _>{};
+            return Container<ctstd::None, _>{};
         }
         // If the this is the last N with well-formed flag, return the value encoded in it, otherwise go to N+1
         template <
@@ -89,7 +94,7 @@ namespace type_var {
         >
         constexpr auto load_reader(int) {
             using Res = decltype(load_reader<T, N+1, _>(int{}));
-            return ctstd::conditional_using<std::is_same_v<Res, detail::Container<ctstd::None, _>>, U, Res>{};
+            return ctstd::conditional_using<std::is_same_v<Res, Container<ctstd::None, _>>, U, Res>{};
         }
     };
     
@@ -106,8 +111,8 @@ namespace type_var {
     /// After instantiation, value<variable_name, RE> will return value_type
     template<
         class T, class Val,
-        class _ = decltype([](){}), 
-        int = detail::assign_reader<detail::Addr<T>, Val, 0, _>(int{})
+        class _ = decltype([](){}),
+        int = friend_injection::assign_reader<friend_injection::Addr<T>, Val, 0, _>(int{})
     >
     struct Assign : _ {};
 
@@ -146,7 +151,7 @@ namespace type_var {
     /// Usage: using current_value = value<variable_name, RE>;
     template <
         class T, class _ = decltype([](){}),
-        class R = typename decltype(detail::load_reader<detail::Addr<T>, 0, _>(int{}))::value
+        class R = typename decltype(friend_injection::load_reader<friend_injection::Addr<T>, 0, _>(int{}))::value
     >
     using value = R;
 };

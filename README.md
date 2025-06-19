@@ -129,12 +129,12 @@ static_assert(
 ```
 Keep in mind that unlike traditional programming, in the metaprogramming paradigm any type can play the role of a variable, and all operations and function calls are done by way of template instantiation.
 
-| Feature          | Traditional C++ Variable | Metaprogramming "Variable" |
-|------------------|--------------------------|----------------------------|
-| Declaration      | `int x;`                 | `struct x {};`             |
-| Values           |  Bits                    | C++ types                  |
-| Typing           | Fixed at compile time    | Dynamic (can refer to any kind of value) |
-| Assignment       | `x = 10;`                | `struct s: Assign<x,int,RE>{};` |
+| Feature     | Traditional C++ Variable | Metaprogramming "Variable"               |
+| ----------- | ------------------------ | ---------------------------------------- |
+| Declaration | `int x;`                 | `struct x {};`                           |
+| Values      | Bits                     | C++ types                                |
+| Typing      | Fixed at compile time    | Dynamic (can refer to any kind of value) |
+| Assignment  | `x = 10;`                | `struct s: Assign<x,int,RE>{};`          |
 
 
 
@@ -269,6 +269,21 @@ This function is a single step of the loop which is used to compute the sum of t
 On GCC, the "simple" templates `add<a, _1, RE>` and `add<b, a, RE>` are resolved fully before any of the `Assign` operations are processed. In other words, the `value<a, RE>` lookups are resolved upfront based on the state before any of the `Assign`s take effect.
 Consequently, the assignments operate on stale data.
 
+Another example of instant instantiation of simple templates is this:
+```cpp
+run_line: 
+    Assign<a, short, RE>, 
+    if_<True, Assignment<a>, int, RE>, 
+    Assign<a, long, RE> 
+{};
+#ifdef __clang__
+    static_assert(std::is_same_v<value<a, RE>, long>, "Clang instantiates the templates depth-first, in the order they are written in the parent list");
+#elif __GNUG__
+    static_assert(std::is_same_v<value<a, RE>, int>, "GCC evaluates the non-recursive template first in the order they are written, then the recursive one");
+#endif
+```
+GCC doesn't want to instantiate parent classes in the order that they appear, even though it is logical, and instead construct the "simpler" `Assign`s first, deferring the "complicated" `if_<True, Assignment<a>>` for later. I have written "simple" and "complicated" in quotes because I was unable to find a simple description of the conditions under which GCC defers template instantiation to a later stage.
+
 ### Uniqueness issues
 
 Normally, one would expect that explicitly writing out `RE` each time is unnecessary, as it can just be the default argument, like this:
@@ -283,10 +298,101 @@ Debugging this has been a nighmare, because, as you might have noticed in the pr
 
 ## Implementation details
 
-The method was discovered long ago, and there are several blogposts detailing the key idea, «friend injection». [This blogpost](https://mc-deltat.github.io/articles/stateful-metaprogramming-cpp20) has a list of references for those interested. I also recommend reading [this](https://b.atch.se/posts/non-constant-constant-expressions/) as an introduction.
+I will give an informal overview of the key stateful metaprogramming method, called «friend injection». It allows us to construct the principal primitives, `value` and `Assign`.
 
-TODO
+Since the method itself was discovered long ago, there are several blogposts detailing it. [This blogpost](https://mc-deltat.github.io/articles/stateful-metaprogramming-cpp20) has a list of references for those interested. I also recommend reading [this](https://b.atch.se/posts/non-constant-constant-expressions/) as an introduction.
 
-Normally, template functions don't have state, because in a context like `struct a<b,c,d> {};`, 
+For my implementation, which is slightly more convoluted, read [type_var.hpp](https://github.com/AlexThePolygonal/cpp-stateful-templates/blob/master/tests.hpp).
 
-However, 
+To have state and templates like `value<T, _>`, first, we need some way of finding the type corresponding to `T`. Normally, templates are stateless and finding a template construct requires knowing all of its arguments.
+As an example, an attempt to construct `value` and `Assign` could look like this
+```cpp
+template <>
+struct Assign<T, Val1, RE> {
+    using value = Val1;
+};
+
+template <>
+struct Assign<T, Val2, RE> {
+    using value = Val2;
+};
+
+// can't be completed :(
+using value = Assign<T, ...>::value;
+```
+As you see, to fill the ellipsis in the last line, we need to "find" the assign template where the value `Val2` is stored, and for that, we need to know both `Val2` and the `RE` we used to construct it.
+
+However, global functions don't have that problem:
+```cpp
+template <>
+Val2 foo<T, Val2, RE>(T t) {
+    return Val2{};
+};
+
+using value = decltype(foo(T{}));
+```
+We can find the `Val2` using only `T` by global function lookup.
+Then we can "store" type names as result types of functions in the global namespace. 
+In order to be able to update them, we can index them by integers and search for the topmost one using SFINAE. I will call these functions flag functions, and they will look like this:
+```cpp
+Value flag(Flag<T, N>) { return Value{}; }
+```
+The class `Flag<T, N>` is just a container for the name `T` and the integer `N`.
+The flag functions go from 0 to N, and the global namespace will contain the following definitions:
+```cpp
+auto flag(Flag<T, 0>) { return Value0{}; }
+auto flag(Flag<T, 1>) { return Value1{}; }
+auto flag(Flag<T, 2>) { return Value2{}; }
+```
+
+To find the topmost flag, we leverage SFINAE to iterate across all flags starting from 0, and stopping at the last one.
+```cpp
+template <class T, int N = 0, class U = decltype(flag(Flag<T, N>{}))>
+constexpr auto reader(int) {
+    return reader<T, N+1>(int{});
+}
+
+template <class T, int N = 0>
+constexpr auto reader(float) {
+    return decltype(flag(Flag<T, N-1>));
+}
+
+using value = decltype(reader<T>(int{}));
+```
+When `reader<T>(int{})` is invoked, it first attempts to instantiate the `reader<T>(int)` function, which is only possible if `flag(Flag<T,N>)` exists. If so, it calls the next reader function, incrementing `N` by one. If the flag function at this index `N` doesn't exist, it is unable to construct the `reader(int)` functions, so it casts the `int{}` to `float` and instantiates `reader(float)` instead. Then the `reader(float)` function retrieves the value of the flag at `N-1`, which is the 
+
+A small problem with this approach is that we can't explicitly write the `flag` functions in the global namespace.
+However, the `friend` keyword allows us to declare such functions inside a class and inject them into the global namespace, where they can be found by argument-dependent lookup.
+Then, we can define this function later.
+```cpp
+template <class, int>
+struct Flag {
+    // injects the flag function definition into the global namespace
+    // Surprrisingly, we do not need to specify its type.
+    friend constexpr auto flag(Flag);
+};
+
+template <class T, int N, class Val>;
+struct Writer {
+
+    // defines the injected flag function, setting its result type to `Val`
+    friend constexpr auto flag(Flag<T, N>) {
+        return Val{};
+    }
+};
+```
+
+Combining these elements, we can construct `Assign` as well. First, we find the top `N` such that `flag(Flag<T, N>)` exists, then we instantiate a new `Writer`, injecting a new `flag` instance into the global namespace with its return type being 
+
+On GCC, this procedure triggers a warning, because GCC believes that if a template class has a non-template friend functions, the programmer probably made an error.
+We silence it with -Wno-non-template-friend compiler option.
+
+## Conclusion
+
+This is the most _fun_ template metaprogramming exercise I've ever tried, and the fact that I was able to make recursion work, despite the broken behaviour of the compilers, makes me happy.
+
+The UB we are able to observe is very interesting, but unfortunately I doubt that we can make use of these techniques in a standard-conforming manner, and the behaviour isn't consistent across major compilers.
+
+If you have any ideas on why does GCC instantiate templates in this weird order, please let me know, I really want to understand it! Also, if you have any thoughts on which parts of the code are Standard-conforming and which are not, don't hesitate to share them. 
+
+On the other hand, you have any opinions on the excellent design choices of the C++ language which made this project possible, we can address them to the C++ Standards Committee together.
