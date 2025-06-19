@@ -1,6 +1,6 @@
 # C++ Stateful Metaprogramming can be made into an imperative language
 
-Since 2015, it has been known that templates in C++ admit _state_, in the sense that there exist well-defined `constexpr` functions, the outputs of which change depending on the current state of the program.
+Since 2015, it has been known that templates in C++ can maintain _state_, in the sense that there exist well-defined `constexpr` functions, the outputs of which change depending on the current state of the program.
 For example, it is possible to implement a constexpr function `next` such that the code below compiles.
 ```cpp
 template <class _ = /* implementation details */>
@@ -12,7 +12,7 @@ static_assert(next<>() == 2);
 static_assert(next<>() == 3);
 ```
 
-Much more is possible. Inspired by prior work, I have developed an entire imperative language for C++ metaprogramming, implemented as a header-only library for the C++20 standard. The language is dynamically typed. While the syntax is unorthodox, its functionality resembles that of Python. It has all of the primitives which you need for coding, like conditionals and while loops. The statefulness implementation is traditional and uses friend injection, which I will detail in a later section.
+Much more is possible. Inspired by prior work, I have developed an entire imperative language for C++ metaprogramming, implemented as a header-only library for the C++20 standard. The language is dynamically typed. While the syntax is unorthodox, it looks like Python modulo a different choice of brackets and indentations. It has all of the primitives which you need for coding, like conditionals and while loops. The statefulness implementation uses friend injection, a well-established trick, which I will explain in the [section on implementation details](#implementation-details).
 
 Additionally, this approach reveals several fascinating footguns which I didn't know before. The compile times are as large as expected, and we make heavy use of compiler-dependent behaviour. Because of this, I **do not** recommend using any of this code in production.
 
@@ -26,7 +26,7 @@ or
 ```bash
 clang++ -std=c++20 -O0 main.cpp -o a.out
 ```
-No complicated build system is necessary, as the library is header-only. 
+No complex build system is required, as the library is header-only. I have tested this code with gcc 14.2.0, 13.3.0 and clang 19.1.1, 18.1.3, 16.0.6 and 15.0.7, as provided by apt on my Ubuntu machine. The library behaves the same way across different versions of the same compiler.
 
 ## Public interface
 
@@ -36,7 +36,7 @@ The way that the language works can be seen in the [tests.hpp](https://github.co
 
 The primitive stateful operations are defined in the namespace `type_var`. 
 
-In the stateful metaprogramming paradigm, each type name can be thought of as a _variable_ which refers to another entity, similar to how variables work in Python. Because C++ template parameters themselves are not type-restricted, there are effectively no conditions on what a 'variable' can refer to.
+In the stateful metaprogramming paradigm, each type name can be thought of as a _variable_ which refers to another entity, similar to how variables work in Python. Because C++ templates accept any valid type, there are effectively no conditions on what a 'variable' can refer to.
 For example:
 ```cpp
 struct a{}; // this declares a new variable `a`
@@ -67,7 +67,7 @@ using call_foo_1 = Foo<int, decltype([](){})>;
 struct call_foo_2 : Foo<bool, decltype([](){})> {};
 ```
 
-A _lambda function_ is a typename which has a special member template `__call__`, which is a function primitive. 
+A _lambda function_ is a type which has a special member template `__call__`, which is a function primitive. 
 ```cpp
 // Bar is a lambda function
 struct Bar {
@@ -76,16 +76,17 @@ struct Bar {
 };
 ```
 
-All function have a final template argument `class _`. It must always be `decltype([](){})`, and it is obligatory to write it out explicitly. The C++20 standard, 7.5.5.1, says: The type of a lambda-expression [...] is a _unique_, unnamed non-union class type.
-Because of this, each occurrence of `decltype([](){})` must have a different type, forcing the compiler to re-instantiate the template. Otherwise the compiler, assuming that stateful templates don't exist, will re-use the earlier template instantiations with no changes to the global state.
+The final argument of all functions, called `class _`, must always be `decltype([](){})`, and it is obligatory to write it out explicitly. The C++20 standard, 7.5.5.1, says: The type of a lambda-expression [...] is a _unique_, unnamed non-union class type.
+In other words, each occurrence of decltype([](){}) generates a unique type, forcing template re-instantiation. If it is not used, the compiler is free to assume that in the sequence `Assign<a, int>, Assign<a, bool>, Assign<a, int>` the third class is already instantiated.
 
-For readability, I use the macro `#define RE decltype([](){})` instead.
+For readability, I use the macro `#define RE decltype([](){})` instead. In the later code examples, I will avoid listing the necessary includes and defines for the same reason.
 
 By default, each variable contains the special value `ctstd::None`.
-To assign a different value to a 'variable', instantiate the `type_var::Assign` template class. Ensure that the final template argument is `RE`.
+To assign a different value to a 'variable', instantiate the `type_var::Assign` class template. Ensure that the final template argument is `RE`.
 
 For example, 
 ```cpp
+#include "type_var.hpp"
 #define RE decltype([](){})
 
 // we declare a variable
@@ -103,6 +104,7 @@ The current value of a variable `struct a {};` can be retrieved using `value<a, 
 
 Example:
 ```cpp
+#include "type_var.hpp"
 #define RE decltype([](){})
 using namespace type_var;
 
@@ -240,6 +242,8 @@ To be exact, the standard doesn't give any information on the order in which dif
 
 In practice, template instantiation order behaves predictably on each compiler. I have tested on Clang 19.1.1 and GCC 14.2.0, and the behaviour is similar on the earlier versions, excluding random compiler crashes.
 
+#### Clang is normal
+
 Clang appears to instantiate templates largely in the order they appear in the code, recursively. It generally instantiates base classes before processing members of a derived class. For example:
 ```cpp
 struct do : 
@@ -248,7 +252,9 @@ struct do :
 {};
 ```
 
-GCC behaves in a bizarre way. It behaves identically to Clang, except when instantiating parent template classes, it sometimes evaluates all of the "simple-looking" arguments, then processes the rest sequentially. I was, unfortunately, unable to find a description of the heuristics that cause this behaviour.
+#### GCC is difficult
+
+GCC processes templates in a bizarre way. It behaves identically to Clang, except when instantiating parent template classes, it sometimes evaluates all of the "simple-looking" arguments, then processes the rest sequentially. I was, unfortunately, unable to find a description of the heuristics that cause this behaviour.
 
 This divergence in instantiation order can lead to different, and very surprising, behaviors for stateful 'functions' on GCC compared to Clang, as demonstrated in the recursive tests
 ```cpp
@@ -294,7 +300,7 @@ using value = detail::ValueImpl<Var, _>::value;
 Each time the template is instantiated, a new lambda type must be used.
 However, Clang might decide to ignore its obligations and re-use the same lambda type in a new template, probably because the type `ValueImpl<...>::value` does not depend on `_`. I expect this to be a Clang bug, however, I was unable to find a way to trigger it without using stateful loops, and the sequencing of template instantiations in them is technically UB.
 
-Debugging this has been a nighmare, because, as you might have noticed in the previous section, template instantiations aren't sequenced robustly.
+Debugging this has been a nightmare, because, as you might have noticed in the previous section, template instantiations aren't sequenced robustly.
 
 ## Implementation details
 
@@ -368,7 +374,7 @@ Then, we can define this function later.
 template <class, int>
 struct Flag {
     // injects the flag function definition into the global namespace
-    // Surprrisingly, we do not need to specify its type.
+    // Surprisingly, we do not need to specify its type.
     friend constexpr auto flag(Flag);
 };
 
@@ -382,9 +388,9 @@ struct Writer {
 };
 ```
 
-Combining these elements, we can construct `Assign` as well. First, we find the top `N` such that `flag(Flag<T, N>)` exists, then we instantiate a new `Writer`, injecting a new `flag` instance into the global namespace with its return type being 
+Combining these elements, we can construct `Assign` as well. First, we find the top `N` such that `flag(Flag<T, N>)` exists, then we instantiate a new `Writer`, injecting a new `flag` instance into the global namespace. The return type of this new flag will be the "value" assigned to `T`.
 
-On GCC, this procedure triggers a warning, because GCC believes that if a template class has a non-template friend functions, the programmer probably made an error.
+On GCC, this procedure triggers a warning, because GCC believes that if a class template has a non-template friend functions, the programmer probably made an error.
 We silence it with -Wno-non-template-friend compiler option.
 
 ## Conclusion
@@ -393,6 +399,6 @@ This is the most _fun_ template metaprogramming exercise I've ever tried, and th
 
 The UB we are able to observe is very interesting, but unfortunately I doubt that we can make use of these techniques in a standard-conforming manner, and the behaviour isn't consistent across major compilers.
 
-If you have any ideas on why does GCC instantiate templates in this weird order, please let me know, I really want to understand it! Also, if you have any thoughts on which parts of the code are Standard-conforming and which are not, don't hesitate to share them. 
+If you have any ideas on why GCC instantiates templates in this weird order, please let me know, I really want to understand it! Also, if you have any thoughts on which parts of the code are Standard-conforming and which are not, don't hesitate to share them. 
 
-On the other hand, you have any opinions on the excellent design choices of the C++ language which made this project possible, we can address them to the C++ Standards Committee together.
+On the other hand, if you have any opinions on the excellent design choices of the C++ language which made this project possible, we can address them to the C++ Standards Committee together.

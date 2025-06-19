@@ -2,11 +2,30 @@
 # compile debug
 
 
-echo "GCC"
+echo "GCC14"
+# g++-14 --version   
 g++-14 -std=c++20 -O0 -Wno-non-template-friend -ftemplate-depth=1000 -ftemplate-backtrace-limit=0 main.cpp -o __run__
 
-echo "CLANG"
+echo "GCC13"
+# g++-13 --version
+g++-13 -std=c++20 -O0 -Wno-non-template-friend -ftemplate-depth=1000 -ftemplate-backtrace-limit=0 main.cpp -o __run__
+
+
+echo "CLANG19"
+# clang++-19 --version
 clang++-19 -std=c++20 -O0 -ftemplate-depth=1000 -ftemplate-backtrace-limit=0 main.cpp -o __run__
+
+echo "CLANG18"
+# clang++-18 --version
+clang++-18 -std=c++20 -O0 -ftemplate-depth=1000 -ftemplate-backtrace-limit=0 main.cpp -o __run__
+
+echo "CLANG16"
+# clang++-16 --version
+clang++-16 -std=c++20 -O0 -ftemplate-depth=1000 -ftemplate-backtrace-limit=0 main.cpp -o __run__
+
+echo "CLANG15"
+# clang++-15 --version
+clang++-15 -std=c++20 -O0 -ftemplate-depth=1000 -ftemplate-backtrace-limit=0 main.cpp -o __run__
 
 endl=""
 args=""
