@@ -1,4 +1,4 @@
-# GCC Template Instantiation Order Analysis
+# GCC Template Instantiation Order Analysis by Claude
 
 ## Overview
 
