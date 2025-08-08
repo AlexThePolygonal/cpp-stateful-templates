@@ -1,23 +1,29 @@
 # Building an Imperative Language with C++ Templates
+<!-- # Building an Imperative Language with C++ Templates -
+<!-- # Exploring Undefined Behaviour with Stateful C++ templates -->
 
 Since 2015, we know that templates in C++ can maintain state: there exist well-defined `constexpr` functions, the outputs of which change depending on the current state of the program.
-For example, it is possible to implement a constexpr function `next` such that the code below compiles.
+For example, it is possible to implement a template class `next` such that the code below compiles.
 
 ```cpp
 template <class _ = /* implementation details */>
-constexpr int next() { /*implementation*/ } 
+struct next {
+    const static int value = /*impl details*/;
+} 
 
 // next has a different value each time even though it's a constant expression
-static_assert(next<>() == 1);
-static_assert(next<>() == 2);
-static_assert(next<>() == 3);
+static_assert(next<>::value == 1);
+static_assert(next<>::value == 2);
+static_assert(next<>::value == 3);
 ```
 
-Much more is possible. Inspired by older blog posts, I have developed an entire imperative language for C++ metaprogramming, implemented as a header-only library for the C++20 standard. The language is dynamically typed. The syntax is unorthodox but resembles Python, with different bracket and indentation conventions. It has all of the primitives which you need for coding, like conditionals and while loops. The statefulness implementation uses friend injection, a well-established trick, which I will explain in the [section on implementation details](#implementation-details).
+Much more is possible. Inspired by older blog posts, I show how to expand this trick to emulate a simple dynamically typed language with C++ template metaprogramming. The syntax is rather unorthodox. We implement conditionals and loops, and leave lists and dicts as an exercise. The statefulness implementation uses friend injection, a well-established trick, which I will explain in the [section on implementation details](#implementation-details).
 
-Additionally, this approach reveals several fascinating footguns which I didn't know before. The compile times are as large as expected, and we make heavy use of compiler-dependent behaviour. I **do not** recommend using any of this code in production.
+Obviously, **do not use this code in production, ever**! However, you can use it for research. This technique allows us to explore template instantiation on modern compilers in a new way, which is valuable from a research perspective. It allows us to observe how compilers sequence template instantiation and opens a fascinating whole new class of UB. I suspect that we can observe a bug in Clang that way, but due to the overwhelming amount of UB I can't be sure. 
 
-## Running the code
+Since this is a research project, I didn't investigate the compilation times, but I assure you that they are very large. For example, the tests take 3 seconds to run on my core i7 machine. For the same reason, I didn't use modern features like concepts.
+
+#### Running the code
 
 To try out the functionality, clone this repository and compile `main.cpp` with, for example
 
@@ -31,9 +37,9 @@ or
 clang++ -std=c++20 -O0 main.cpp -o a.out
 ```
 
-No complex build system is required, as the library is header-only. I have tested this code with gcc 14.2.0, 13.3.0 and clang 19.1.1, 18.1.3, 16.0.6 and 15.0.7, and the library behaves the same way across different versions of the same compiler.
+No complex build system is required, as the library is header-only. I have tested this code with gcc 15.1.1, 14.2.0, 13.3.0 and clang 19.1.1, 18.1.3, 16.0.6 and 15.0.7, and the library behaves the same way across different versions of the same compiler.
 
-## Public interface
+## Public interface & semantics
 
 The way that the language works can be seen in the [tests.hpp](https://github.com/AlexThePolygonal/cpp-stateful-templates/blob/master/tests.hpp) file. Because the library is compile-time, the tests go into header files.
 
@@ -41,7 +47,7 @@ The way that the language works can be seen in the [tests.hpp](https://github.co
 
 The primitive stateful operations are defined in `type_var`.
 
-From this point, each type name can be thought of as a _variable_ which refers to another entity, similar to how variables work in Python. Because C++ templates accept any valid type, there are effectively no conditions on what a 'variable' can refer to.
+From this point onward, each type name can be thought of as a _variable_ which refers to another entity, similar to how variables work in Python. Because C++ templates accept any valid type, there are effectively no conditions on what a 'variable' can refer to.
 For example:
 
 ```cpp
@@ -256,11 +262,11 @@ Stateful metaprogramming is not an intended feature of C++. The standard doesn't
 
 As a consequence, most of the code in this repository is UB.
 
-In practice, template instantiation order behaves predictably on each compiler. I have tested it thoroughly on Clang 19.1.1 and GCC 14.2.0, and the behaviour is similar on the earlier versions. The only impact is that on older Clang version, the frontend might unpredictably crash.
+In practice, template instantiation order behaves predictably on each compiler. I have tested it thoroughly on Clang 19.1.1 and GCC 14.2.0, and the behaviour is identical on the preceding versions of the compilers, except that the Clang frontend crashes unpredictably on some of them.
 
 #### Clang is simple
 
-Clang appears to instantiate templates largely in the order they appear in the code, recursively. It generally instantiates base classes before processing members of a derived class. For example:
+Clang instantiates templates in the order they appear in the code, recursively. It instantiates base classes before processing members of a derived class. For example:
 
 ```cpp
 struct do : 
@@ -271,7 +277,7 @@ struct do :
 
 #### GCC is complex
 
-GCC processes templates in a bizarre way. It behaves identically to Clang, except when instantiating parent template classes, it sometimes evaluates all of the "simple-looking" arguments, then processes the rest sequentially. I was, unfortunately, unable to find a description of the heuristics that cause this behaviour.
+GCC uses complex optimization heuristics in addition to the naïve implementation. It behaves identically to Clang, except when instantiating parent template classes, it sometimes evaluates all of the "simple-looking" arguments, then processes the rest sequentially. I was, unfortunately, unable to find a description of the heuristics that cause this behaviour.
 
 This leads to different, and very surprising, results of stateful 'functions' on GCC and Clang, and you can see it in the recursive tests.
 
@@ -313,7 +319,7 @@ GCC doesn't want to instantiate parent classes in the order that they appear, ev
 
 ### Uniqueness issues
 
-Normally, you would expect that explicitly writing out `RE` each time is unnecessary, as it can just be the default argument, like this:
+Normally, you would expect that explicitly writing out `RE` each time is unnecessary, as we can use it as the default template argument:
 
 ```cpp
 template <class Var, class _ = decltype([](){})>
@@ -426,12 +432,14 @@ Combining these elements, we can construct `Assign` as well. First, we find the 
 On GCC it triggers a warning, because GCC believes that if a class template has non-template friend functions, the programmer probably made an error.
 We silence it with -Wno-non-template-friend compiler option.
 
+Note that this implementation is deeply inefficient, as performing $N$ assignments requires instantiating $O(N)$ different classes and doing $O(N^2)$ work in total.
+
 ## Conclusion
 
 This is the most _fun_ template metaprogramming exercise I've ever tried, and the fact that I was able to make recursion work, despite the _interesting_ behaviour of the compilers, makes me happy.
 
-The UB we are able to observe is very interesting, but unfortunately I doubt that we can make use of these techniques in a standard-conforming manner, and the behaviour isn't consistent across major compilers.
+The UB we are able to observe is very interesting, but I doubt that we can make use of these techniques in a standard-conforming manner, and the behaviour isn't consistent across major compilers.
 
-If you have any ideas on why GCC instantiates templates in this weird order, please let me know, I really want to understand it! Also, if you have any thoughts on which parts of the code are Standard-conforming and which are not, don't hesitate to share them.
+If you have any ideas on why GCC instantiates templates in this complicated order, please let me know, I really want to understand it! Also, if you have any thoughts on which parts of the code are Standard-conforming and which are not, don't hesitate to share them.
 
-On the other hand, if you have any opinions on the design choices of the C++ language, you can address them to the C++ Standards Committee or, instead, switch to Rust.
+On the other hand, if you have any opinions on the design of the C++ language, you can address them to the C++ Standards Committee or, maybe, switch to Rust.
