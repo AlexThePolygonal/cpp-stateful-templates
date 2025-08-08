@@ -2,6 +2,7 @@
 
 Since 2015, we know that templates in C++ can maintain state: there exist well-defined `constexpr` functions, the outputs of which change depending on the current state of the program.
 For example, it is possible to implement a constexpr function `next` such that the code below compiles.
+
 ```cpp
 template <class _ = /* implementation details */>
 constexpr int next() { /*implementation*/ } 
@@ -19,25 +20,30 @@ Additionally, this approach reveals several fascinating footguns which I didn't 
 ## Running the code
 
 To try out the functionality, clone this repository and compile `main.cpp` with, for example
+
 ```bash
 g++ -std=c++20 -O0 -Wno-non-template-friend main.cpp -o a.out
 ```
-or 
+
+or
+
 ```bash
 clang++ -std=c++20 -O0 main.cpp -o a.out
 ```
+
 No complex build system is required, as the library is header-only. I have tested this code with gcc 14.2.0, 13.3.0 and clang 19.1.1, 18.1.3, 16.0.6 and 15.0.7, and the library behaves the same way across different versions of the same compiler.
 
 ## Public interface
 
 The way that the language works can be seen in the [tests.hpp](https://github.com/AlexThePolygonal/cpp-stateful-templates/blob/master/tests.hpp) file. Because the library is compile-time, the tests go into header files.
 
-### ```namespace type_var```
+### ``namespace type_var``
 
-The primitive stateful operations are defined in `type_var`. 
+The primitive stateful operations are defined in `type_var`.
 
 From this point, each type name can be thought of as a _variable_ which refers to another entity, similar to how variables work in Python. Because C++ templates accept any valid type, there are effectively no conditions on what a 'variable' can refer to.
 For example:
+
 ```cpp
 struct a{}; // this declares a new variable `a`
 
@@ -55,6 +61,7 @@ struct d {
 ```
 
 A _function primitive_ is either a template class or a using declaration that instantiates a template. By the _execution of a function_ I mean the instantiation of the templates involved, including those in its parent classes, member types/aliases and member functions.
+
 ```cpp
 // Foo is a function
 template <class T, class _>
@@ -67,7 +74,8 @@ using call_foo_1 = Foo<int, decltype([](){})>;
 struct call_foo_2 : Foo<bool, decltype([](){})> {};
 ```
 
-A _lambda function_ is a type that has a special member template `__call__`, which is a function primitive. 
+A _lambda function_ is a type that has a special member template `__call__`, which is a function primitive.
+
 ```cpp
 // Bar is a lambda function
 struct Bar {
@@ -84,7 +92,8 @@ For readability, I use the macro `#define RE decltype([](){})` instead. In the l
 By default, each variable contains the special value `ctstd::None`.
 To assign a different value to a 'variable', instantiate the `type_var::Assign` class template. Ensure that the final template argument is `RE`.
 
-For example, 
+For example,
+
 ```cpp
 #include "type_var.hpp"
 #define RE decltype([](){})
@@ -100,9 +109,10 @@ struct do_assign2 : type_var::Assign<a, void, RE> {};
 // now `a` holds the value "void"
 ```
 
-The current value of a variable `struct a {};` can be retrieved using `value<a, decltype([](){})>`. 
+The current value of a variable `struct a {};` can be retrieved using `value<a, decltype([](){})>`.
 
 Example:
+
 ```cpp
 #include "type_var.hpp"
 #define RE decltype([](){})
@@ -129,17 +139,15 @@ static_assert(
     >, "the value of a is now int"
 )
 ```
+
 Keep in mind that in the metaprogramming paradigm any type can play the role of a variable, and all operations and function calls are done by template instantiation.
 
 | Feature     | Traditional C++ Variable | Metaprogramming "Variable"               |
 | ----------- | ------------------------ | ---------------------------------------- |
-| Declaration | `int x;`                 | `struct x {};`                           |
+| Declaration | `int x;`               | `struct x {};`                         |
 | Values      | Bits                     | C++ types                                |
 | Typing      | Fixed at compile time    | Dynamic (can refer to any kind of value) |
-| Assignment  | `x = 10;`                | `struct s: Assign<x,int,RE>{};`          |
-
-
-
+| Assignment  | `x = 10;`              | `struct s: Assign<x,int,RE>{};`        |
 
 Assignments to the variable `T` can also be performed by a lambda function `Assignment<T>`.
 
@@ -157,9 +165,11 @@ static_assert(
     >, "the value of a is now int"
 );
 ```
+
 This lambda is useful for implementing control flow mechanisms.
 
 In the tests, I use a special macro `run_line` to execute the functions.
+
 ```cpp
 template <class> struct __run_line {};
 
@@ -170,11 +180,12 @@ template <class> struct __run_line {};
 // instantiates Assign as a parent class of __run_line
 run_line: type_var::Assign<int, bool, RE> {};
 ```
+
 The code `template <> struct a<T>` is [explicit template instantiation](https://en.cppreference.com/w/cpp/language/template_specialization.html), where instead of waiting for the template struct `a` to be used with the argument `T`, we explicitly state that `a<T>` needs to be instantiated, immediately.
 
 This is the basis of mutable state manipulation. But for a complete language, we need to construct control flow primitives.
 
-### ```namespace cexpr_control```
+### ``namespace cexpr_control``
 
 This namespace contains the implementations of if and while.
 
@@ -185,10 +196,13 @@ The function `if_<cond, Func, Args, _>` does exactly what you'd expect. If `cond
 The function `if_else` is analogous. If the condition is `True`, it will call `Func` with `ArgsIfTrue`, if the condition is `False`, it will call `Func` with `ArgsIfFalse`.
 
 To reiterate, the call
-```cpp 
+
+```cpp
 using _1 = if_<True, Foo, Args, RE>;
 ```
+
 achieves a similar effect to the following imperative code
+
 ```cpp
 if (true) {
     Foo(Args);
@@ -197,11 +211,14 @@ if (true) {
 
 The `DoWhile<stop_condition, Func>` function primitive operates on a similar principle.
 It will repeatedly call the function `Func` (with empty arguments) as long as the value of the variable `stop_condition` evaluates to `ctstd::True`.
-The code 
+The code
+
 ```cpp
 using _1 = DoWhile<is_nonempty, Foo, RE>;
 ```
+
 has the same function as the following imperative code
+
 ```cpp
 do {
     Foo();
@@ -210,14 +227,14 @@ do {
 
 An important distinction is that the if_ function typically branches based on an immediate boolean 'value' (e.g., `ctstd::True`), while DoWhile often takes a 'variable' (e.g., `int` or `Foo`) whose stored 'value' is checked in each iteration
 
-### ```namespace ctstd```
+### ``namespace ctstd``
 
 This namespace contains the primitive "types" and "values" of the language.
 
 For consistency, they're re-implemented from scratch. I believe it enhances the Pythonic flavor.
 
 - `ctstd::None` is analogous to `None` in Python.
-- `True` and `False` are boolean values. 
+- `True` and `False` are boolean values.
 - `And`, `Or`, `Xor`, `Not` are primitive functions on the booleans.
 
 Arithmetic is implemented using Peano axioms:
@@ -233,10 +250,9 @@ The following helper templates are provided for constructing functions that acce
 - `last`, `first`, `tail` allow to extract values from an Argpass tuple.
 - `Lambda` transforms a function with multiple arguments into a lambda function which accepts a single Argpass.
 
-
 ### Template instantiation ordering
 
-Stateful metaprogramming is not an intended feature of C++. The standard doesn't give any information on the order in which different templates have to be instantiated, as it assumes that it cannot matter. 
+Stateful metaprogramming is not an intended feature of C++. The standard doesn't give any information on the order in which different templates have to be instantiated, as it assumes that it cannot matter.
 
 As a consequence, most of the code in this repository is UB.
 
@@ -245,6 +261,7 @@ In practice, template instantiation order behaves predictably on each compiler. 
 #### Clang is simple
 
 Clang appears to instantiate templates largely in the order they appear in the code, recursively. It generally instantiates base classes before processing members of a derived class. For example:
+
 ```cpp
 struct do : 
     Foo<RE>, // clang always instantiates Foo, starting with its parent classes 
@@ -257,6 +274,7 @@ struct do :
 GCC processes templates in a bizarre way. It behaves identically to Clang, except when instantiating parent template classes, it sometimes evaluates all of the "simple-looking" arguments, then processes the rest sequentially. I was, unfortunately, unable to find a description of the heuristics that cause this behaviour.
 
 This leads to different, and very surprising, results of stateful 'functions' on GCC and Clang, and you can see it in the recursive tests.
+
 ```cpp
 struct SumOfFirstIntegers {
     template <class _>
@@ -270,12 +288,14 @@ struct SumOfFirstIntegers {
     {};
 };
 ```
+
 This function is a single step of the loop which is used to compute the sum of the first 5 peano integers. `a` is the counter, `b` is the accumulator variable, and `c` is the stopping condition.
 
-On GCC, the "simple" templates `add<a, _1, RE>` and `add<b, a, RE>`, and the `value<a, RE>` lookups inside are resolved before any of the `Assign` operations take effect. 
+On GCC, the "simple" templates `add<a, _1, RE>` and `add<b, a, RE>`, and the `value<a, RE>` lookups inside are resolved before any of the `Assign` operations take effect.
 Consequently, the assignments operate on stale data.
 
 Another example of instant instantiation of simple templates is this:
+
 ```cpp
 run_line: 
     Assign<a, short, RE>, 
@@ -288,15 +308,18 @@ run_line:
     static_assert(std::is_same_v<value<a, RE>, int>, "GCC evaluates the non-recursive template first in the order they are written, then the recursive one");
 #endif
 ```
+
 GCC doesn't want to instantiate parent classes in the order that they appear, even though it is logical, and instead construct the "simpler" `Assign`s first, deferring the "complicated" `if_<True, Assignment<a>>` for later. I have written "simple" and "complicated" in quotes because I was unable to find a simple description of the conditions under which GCC defers template instantiation to a later stage.
 
 ### Uniqueness issues
 
 Normally, you would expect that explicitly writing out `RE` each time is unnecessary, as it can just be the default argument, like this:
+
 ```cpp
 template <class Var, class _ = decltype([](){})>
 using value = detail::ValueImpl<Var, _>::value;
 ```
+
 Each time the template is instantiated, a new lambda type must be used.
 However, Clang might decide to ignore its obligations and re-use the same lambda type in a new template, probably because the type `ValueImpl<...>::value` does not depend on `_`. I expect this to be a Clang bug, however, I couldn't find a way to trigger it without using stateful loops, and the order of template instantiations in them is technically UB.
 
@@ -312,6 +335,7 @@ For my implementation, which is slightly more convoluted, read [type_var.hpp](ht
 
 To have state and templates like `value<T, _>`, first, we need some way of finding the type corresponding to `T`. Normally, templates are stateless and finding a template construct requires knowing all of its arguments.
 As an example, we could try to construct `value` and `Assign` like this
+
 ```cpp
 template <>
 struct Assign<T, Val1, RE> {
@@ -326,9 +350,11 @@ struct Assign<T, Val2, RE> {
 // can't be completed :(
 using value = Assign<T, ...>::value;
 ```
+
 As you see, to fill the ellipsis in the last line, we need to "find" the assign template where the value `Val2` is stored, and for that, we need to know both `Val2` and the `RE` we used to construct it.
 
 However, global functions don't have that problem:
+
 ```cpp
 template <>
 Val2 foo<T, Val2, RE>(T t) {
@@ -337,14 +363,18 @@ Val2 foo<T, Val2, RE>(T t) {
 
 using value = decltype(foo(T{}));
 ```
+
 We can find the `Val2` using only `T` by global function lookup.
-Then we can "store" type names as result types of functions in the global namespace. 
+Then we can "store" type names as result types of functions in the global namespace.
 To be able to update them, we can index them by integers and search for the topmost one using SFINAE. I will call these functions flag functions, and they will look like this:
+
 ```cpp
 Value flag(Flag<T, N>) { return Value{}; }
 ```
+
 The class `Flag<T, N>` is just a container for the name `T` and the integer `N`.
 The flag functions go from 0 to N, and the global namespace will contain the following definitions:
+
 ```cpp
 auto flag(Flag<T, 0>) { return Value0{}; }
 auto flag(Flag<T, 1>) { return Value1{}; }
@@ -352,6 +382,7 @@ auto flag(Flag<T, 2>) { return Value2{}; }
 ```
 
 To find the topmost flag, we leverage SFINAE to iterate across all flags starting from 0, and stopping at the last one.
+
 ```cpp
 template <class T, int N = 0, class U = decltype(flag(Flag<T, N>{}))>
 constexpr auto reader(int) {
@@ -365,11 +396,13 @@ constexpr auto reader(float) {
 
 using value = decltype(reader<T>(int{}));
 ```
+
 When `reader<T>(int{})` is invoked, it first attempts to instantiate the `reader<T>(int)` function, which is only possible if `flag(Flag<T,N>)` exists. If so, it calls the next reader function, incrementing `N` by one. If the flag function at this index `N` doesn't exist, it is unable to construct the `reader(int)` functions, so it casts the `int{}` to `float` and instantiates `reader(float)` instead. Then the `reader(float)` function retrieves the value of the topmost flag at index `N-1`.
 
 However, we can't explicitly write the `flag` functions in the global namespace.
 The `friend` keyword allows us to declare such functions inside a class and inject them into the global namespace, where they can be found by argument-dependent lookup.
 Then, we can define this function later.
+
 ```cpp
 template <class, int>
 struct Flag {
@@ -399,6 +432,6 @@ This is the most _fun_ template metaprogramming exercise I've ever tried, and th
 
 The UB we are able to observe is very interesting, but unfortunately I doubt that we can make use of these techniques in a standard-conforming manner, and the behaviour isn't consistent across major compilers.
 
-If you have any ideas on why GCC instantiates templates in this weird order, please let me know, I really want to understand it! Also, if you have any thoughts on which parts of the code are Standard-conforming and which are not, don't hesitate to share them. 
+If you have any ideas on why GCC instantiates templates in this weird order, please let me know, I really want to understand it! Also, if you have any thoughts on which parts of the code are Standard-conforming and which are not, don't hesitate to share them.
 
-On the other hand, if you have any opinions on the excellent design choices of the C++ language which made this project possible, we can address them to the C++ Standards Committee together.
+On the other hand, if you have any opinions on the design choices of the C++ language, you can address them to the C++ Standards Committee or, instead, switch to Rust.
