@@ -1,5 +1,4 @@
 # Building an Imperative Language with C++ Templates
-<!-- # Building an Imperative Language with C++ Templates -
 <!-- # Exploring Undefined Behaviour with Stateful C++ templates -->
 
 Since 2015, we know that templates in C++ can maintain state: there exist well-defined `constexpr` functions, the outputs of which change depending on the current state of the program.
@@ -9,7 +8,7 @@ For example, it is possible to implement a template class `next` such that the c
 template <class _ = /* implementation details */>
 struct next {
     const static int value = /*impl details*/;
-} 
+}
 
 // next has a different value each time even though it's a constant expression
 static_assert(next<>::value == 1);
@@ -17,11 +16,11 @@ static_assert(next<>::value == 2);
 static_assert(next<>::value == 3);
 ```
 
-Much more is possible. Inspired by older blog posts, I show how to expand this trick to emulate a simple dynamically typed language with C++ template metaprogramming. The syntax is rather unorthodox. We implement conditionals and loops, and leave lists and dicts as an exercise. The statefulness implementation uses friend injection, a well-established trick, which I will explain in the [section on implementation details](#implementation-details).
+Much more is possible. Inspired by older blog posts, I show how to expand this trick to emulate a rudimentary dynamically typed language with C++ template metaprogramming. The syntax is rather unorthodox. We implement conditionals and loops, and leave lists and dicts as an exercise. The statefulness implementation uses friend injection, a well-established trick, which I will explain in the [section on implementation details](#implementation-details).
 
-Obviously, **do not use this code in production, ever**! However, you can use it for research. This technique allows us to explore template instantiation on modern compilers in a new way, which is valuable from a research perspective. It allows us to observe how compilers sequence template instantiation and opens a fascinating whole new class of UB. I suspect that we can observe a bug in Clang that way, but due to the overwhelming amount of UB I can't be sure. 
+Obviously, **do not use this code in production, ever**! However, you can use it for research. It allows us to observe how compilers sequence template instantiation and opens a fascinating whole new class of UB. I suspect that we can observe a bug in Clang that way, but due to the overwhelming amount of UB I can't be sure. 
 
-Since this is a research project, I didn't investigate the compilation times, but I assure you that they are very large. For example, the tests take 3 seconds to run on my core i7 machine. For the same reason, I didn't use modern features like concepts.
+Since this is an exploratory project, I didn't investigate the compilation times, but I assure you that they are very large. For example, the tests take 3 seconds to run on my core i7 machine. For the same reason, I didn't use modern features like concepts.
 
 #### Running the code
 
@@ -256,11 +255,65 @@ The following helper templates are provided for constructing functions that acce
 - `last`, `first`, `tail` allow to extract values from an Argpass tuple.
 - `Lambda` transforms a function with multiple arguments into a lambda function which accepts a single Argpass.
 
+### Examples
+
+The code below implements the Collatz sequence using the new control flow primitives.
+
+```c++
+#define run_line template <> struct __run_line<decltype([](){})>
+#define RE decltype([](){})
+
+namespace big_recursion_test_1 {
+    using namespace type_var;
+    using namespace ctstd;
+    using namespace cexpr_control;
+
+    template <class> struct __run_line {};
+
+    struct a {}; // the variable of the Collatz sequence
+    struct steps {}; // the step count
+    struct didnt_reach_one {}; // whether we reached 1
+
+    // Initialization
+    run_line: Assign<a, _7, RE> {}; // 7 > 22 > 11 > 34 > 17 > 52 > 26 > 13 > 40 > 20 > 10 > 5 > 16 > 8 > 4 > 2 > 1
+    run_line: Assign<steps, _0, RE> {};
+    run_line: Assign<didnt_reach_one, True, RE> {};
+
+    // It should take 16 steps 
+
+    // The Collatz step is a single step of the Collatz sequence.
+    struct CollatzStep {
+        template <class _>
+        struct __call__ :
+            if_else<                               // if (
+                eq<remainder<a, _2, RE>, _0, RE>,  //     a % 2 == 0) {
+                Assignment<a>,                     //
+                divide<a, _2, RE>,                 //        a =  a / 2;
+                add<mult<a, _3, RE>, _1, RE>,      // } else { a = 3 * a + 1; }
+                RE
+            >,
+            Assign<steps, add<steps, _1, RE>, RE>,         // b = b + 1;
+            Assign<didnt_reach_one, Not<eq<a, _1, RE>, RE>, RE>  // c = (a != 1);
+        {};
+    };
+
+    // run CollatzStep while didnt_reach_one is True
+    run_line: ::cexpr_control::DoWhile<CollatzStep, didnt_reach_one, RE> {};
+
+#ifdef __clang__
+    static_assert(to_bool<eq<a, Integer<1>, RE>>); 
+    static_assert(to_bool<eq<steps, Integer<16>, RE>>); // Clang behaves as expected
+#elif __GNUG__
+    static_assert(to_bool<eq<a, Integer<2>, RE>>);
+    static_assert(to_bool<eq<steps, Integer<18>, RE>>); // wtf happens here?? read the next section...
+#endif
+};
+
+```
+
 ### Template instantiation ordering
 
-Stateful metaprogramming is not an intended feature of C++. The standard doesn't give any information on the order in which different templates have to be instantiated, as it assumes that it cannot matter.
-
-As a consequence, most of the code in this repository is UB.
+Stateful metaprogramming is not an intended feature of C++. The standard doesn't give any information on the order in which different templates have to be instantiated, as it assumes that it cannot matter. Then, while stateful metaprogramming is well-defined, the behaviour of `Assign<>` and `value<>` is UB.
 
 In practice, template instantiation order behaves predictably on each compiler. I have tested it thoroughly on Clang 19.1.1 and GCC 14.2.0, and the behaviour is identical on the preceding versions of the compilers, except that the Clang frontend crashes unpredictably on some of them.
 
@@ -430,7 +483,7 @@ struct Writer {
 Combining these elements, we can construct `Assign` as well. First, we find the top `N` such that `flag(Flag<T, N>)` exists, then we instantiate a new `Writer`, injecting a new `flag` instance into the global namespace. The return type of this new flag will be the "value" assigned to `T`.
 
 On GCC it triggers a warning, because GCC believes that if a class template has non-template friend functions, the programmer probably made an error.
-We silence it with -Wno-non-template-friend compiler option.
+We silence it with the -Wno-non-template-friend compiler option.
 
 Note that this implementation is deeply inefficient, as performing $N$ assignments requires instantiating $O(N)$ different classes and doing $O(N^2)$ work in total.
 
