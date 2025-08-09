@@ -742,8 +742,8 @@ namespace recursion_test_1 {
         class _, unsigned N, class print
     >
     struct DoWhileI : SumOfFirstNIntegers<
-                        ::cexpr_control::detail::Pair<
-                            ::cexpr_control::detail::WrapInt<N>, _>
+                        detail::Pair<
+                            detail::WrapInt<N>, _>
                         >, DoWhileI<
                     type_var::value<c, RE>, 
                     _, N+1, value<a, RE>
@@ -774,35 +774,35 @@ namespace recursion_test_2 {
 
     template <class> struct __run_line {};
 
-    struct a {};
-    struct b {};
-    struct c {};
-    run_line : Assign<a, peano::_0, RE> {};
-    run_line : Assign<b, peano::_0, RE> {};
-    run_line : Assign<c, ctstd::True, RE> {};
+    struct i {};
+    struct sum {};
+    struct i_leq_5 {};
+    run_line : Assign<i, peano::_0, RE> {};
+    run_line : Assign<sum, peano::_0, RE> {};
+    run_line : Assign<i_leq_5, ctstd::True, RE> {};
 
 
     struct SumOfFirstIntegers {
         template <class _>
         struct __call__ : 
-            Assign<a, 
-                peano::Succ<value<a, RE>>, RE
+            Assign<i, 
+                peano::Succ<value<i, RE>>, RE
             >,
-            Assign<b,
-                peano::add<value<b, RE>, value<a, RE>>, RE 
+            Assign<sum,
+                peano::add<value<sum, RE>, value<i, RE>>, RE
             >,
-            Assign<c,
-                peano::leq<value<a, RE>, peano::_5>, RE
+            Assign<i_leq_5,
+                peano::leq<value<i, RE>, peano::_5>, RE
             >
         {};
     };
 
-    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
+    run_line : DoWhile<SumOfFirstIntegers, i_leq_5, RE> {};
 
 #ifdef __clang__
-    static_assert(std::is_same_v<value<b, RE>, peano::Integer<21>>);
+    static_assert(std::is_same_v<value<sum, RE>, peano::Integer<21>>);
 #elif __GNUG__
-    static_assert(std::is_same_v<value<b, RE>, peano::Integer<28>>);
+    static_assert(std::is_same_v<value<sum, RE>, peano::Integer<28>>);
 #endif
 }
 
@@ -830,7 +830,7 @@ namespace recursion_test_2_1 {
         {};
     };
 
-    run_line : ::cexpr_control::DoWhile<SumOfFirstIntegers, c, RE> {};
+    run_line : DoWhile<SumOfFirstIntegers, c, RE> {};
 
 #ifdef __clang__
     static_assert(to_bool<eq<b, Integer<21>, RE>>);
@@ -863,7 +863,7 @@ namespace recursion_test_delayed_1 {
         {};
     };
 
-    run_line : ::cexpr_control::DoWhile<Delayed<Delayed<SumOfFirstIntegers>>, c, RE> {};
+    run_line : DoWhile<Delayed<Delayed<SumOfFirstIntegers>>, c, RE> {};
 
 #ifdef __clang__
     static_assert(to_bool<eq<b, Integer<21>, RE>>);
@@ -904,7 +904,7 @@ namespace big_recursion_test_1 {
         {};
     };
 
-    run_line: ::cexpr_control::DoWhile<CollatzStep, c, RE> {};
+    run_line: DoWhile<CollatzStep, c, RE> {};
 
 #ifdef __clang__
     static_assert(to_bool<eq<a, Integer<1>, RE>>);

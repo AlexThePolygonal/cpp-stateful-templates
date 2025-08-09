@@ -1,4 +1,4 @@
-# Building an Imperative Language with C++ Templates
+# Emulating an Imperative Language with C++ Templates
 <!-- # Exploring Undefined Behaviour with Stateful C++ templates -->
 
 Since 2015, we know that templates in C++ can maintain state: there exist well-defined `constexpr` functions, the outputs of which change depending on the current state of the program.
@@ -18,7 +18,7 @@ static_assert(next<>::value == 3);
 
 Much more is possible. Inspired by older blog posts, I show how to expand this trick to emulate a rudimentary dynamically typed language with C++ template metaprogramming. The syntax is rather unorthodox. We implement conditionals and loops, and leave lists and dicts as an exercise. The statefulness implementation uses friend injection, a well-established trick, which I will explain in the [section on implementation details](#implementation-details).
 
-Obviously, **do not use this code in production, ever**! However, you can use it for research. It allows us to observe how compilers sequence template instantiation and opens a fascinating whole new class of UB. I suspect that we can observe a bug in Clang that way, but due to the overwhelming amount of UB I can't be sure. 
+Obviously, **do not use this code in production, ever**! However, you can use it for research, or for compiler stress-tests. It allows us to observe how compilers sequence template instantiation and opens a fascinating whole new class of UB. I suspect that we can observe unintended behaviour in Clang that way, but due to the overwhelming amount of UB I can't be sure. 
 
 Since this is an exploratory project, I didn't investigate the compilation times, but I assure you that they are very large. For example, the tests take 3 seconds to run on my core i7 machine. For the same reason, I didn't use modern features like concepts.
 
@@ -89,7 +89,8 @@ struct Bar {
 };
 ```
 
-The final argument of all functions, called `class _`, must always be `decltype([](){})`, and it is obligatory to write it out explicitly.
+The final argument of all functions, called `class _`, must always be `decltype([](){})`, and it is obligatory to write it out explicitly. Using it as the default argument doesn't work on Clang, and I suspect it's a bug. 
+
 Each occurrence of decltype([](){}) generates a unique type (C++20 Standard, 7.5.5.1), forcing template re-instantiation. If it is not used, the compiler is free to assume that in the sequence `Assign<a, int>, Assign<a, bool>, Assign<a, int>` the third class is already instantiated, because it looks the same as the first.
 
 For readability, I use the macro `#define RE decltype([](){})` instead. In the later code examples, I will avoid listing the necessary includes and defines for the same reason.
@@ -145,7 +146,7 @@ static_assert(
 )
 ```
 
-Keep in mind that in the metaprogramming paradigm any type can play the role of a variable, and all operations and function calls are done by template instantiation.
+Keep in mind that in the metaprogramming paradigm any type can play the role of a variable, and all operations and function calls are done by template instantiation. If you want to look at code examples, skip to [section on examples](#examples).
 
 | Feature     | Traditional C++ Variable | Metaprogramming "Variable"               |
 | ----------- | ------------------------ | ---------------------------------------- |
@@ -257,59 +258,121 @@ The following helper templates are provided for constructing functions that acce
 
 ### Examples
 
-The code below implements the Collatz sequence using the new control flow primitives.
+First, we compute the sum of the first $n$ natural numbers.
+```cpp
+int i = 0;
+int sum = 0;
+do {
+    sum += i;
+    i++;
+} while (i <= 5);
+```
+It can be implemented using stateful templates as follows:
 
 ```c++
 #define run_line template <> struct __run_line<decltype([](){})>
 #define RE decltype([](){})
 
-namespace big_recursion_test_1 {
-    using namespace type_var;
-    using namespace ctstd;
-    using namespace cexpr_control;
+using namespace type_var;
+using namespace ctstd;
+using namespace cexpr_control;
 
-    template <class> struct __run_line {};
+template <class> struct __run_line {};
 
-    struct a {}; // the variable of the Collatz sequence
-    struct steps {}; // the step count
-    struct didnt_reach_one {}; // whether we reached 1
+struct i {};
+struct sum {};
+struct i_leq_5 {};
+run_line : Assign<i, peano::_0, RE> {};
+run_line : Assign<sum, peano::_0, RE> {};
+run_line : Assign<i_leq_5, ctstd::True, RE> {};
 
-    // Initialization
-    run_line: Assign<a, _7, RE> {}; // 7 > 22 > 11 > 34 > 17 > 52 > 26 > 13 > 40 > 20 > 10 > 5 > 16 > 8 > 4 > 2 > 1
-    run_line: Assign<steps, _0, RE> {};
-    run_line: Assign<didnt_reach_one, True, RE> {};
-
-    // It should take 16 steps 
-
-    // The Collatz step is a single step of the Collatz sequence.
-    struct CollatzStep {
-        template <class _>
-        struct __call__ :
-            if_else<                               // if (
-                eq<remainder<a, _2, RE>, _0, RE>,  //     a % 2 == 0) {
-                Assignment<a>,                     //
-                divide<a, _2, RE>,                 //        a =  a / 2;
-                add<mult<a, _3, RE>, _1, RE>,      // } else { a = 3 * a + 1; }
-                RE
-            >,
-            Assign<steps, add<steps, _1, RE>, RE>,         // b = b + 1;
-            Assign<didnt_reach_one, Not<eq<a, _1, RE>, RE>, RE>  // c = (a != 1);
-        {};
-    };
-
-    // run CollatzStep while didnt_reach_one is True
-    run_line: ::cexpr_control::DoWhile<CollatzStep, didnt_reach_one, RE> {};
-
-#ifdef __clang__
-    static_assert(to_bool<eq<a, Integer<1>, RE>>); 
-    static_assert(to_bool<eq<steps, Integer<16>, RE>>); // Clang behaves as expected
-#elif __GNUG__
-    static_assert(to_bool<eq<a, Integer<2>, RE>>);
-    static_assert(to_bool<eq<steps, Integer<18>, RE>>); // wtf happens here?? read the next section...
-#endif
+// a single step of the loop
+struct SumOfFirstIntegers {
+    template <class _>
+    struct __call__ : 
+        Assign<i, 
+            peano::Succ<value<i, RE>>, RE           // i = i+1;
+        >,
+        Assign<sum,
+            peano::add<value<sum, RE>, value<i, RE>>, RE // sum = sum + i;
+        >,
+        Assign<i_leq_5,
+            peano::leq<value<i, RE>, peano::_5>, RE // set condition i <= 5
+        >
+    {};
 };
 
+// Run the loop
+run_line : DoWhile<
+    SumOfFirstIntegers, 
+    i_leq_5, 
+RE> {};
+
+
+#ifdef __clang__
+static_assert(std::is_same_v<value<sum, RE>, peano::Integer<21>>); // clang computes the answer correctly
+#elif __GNUG__
+static_assert(std::is_same_v<value<sum, RE>, peano::Integer<28>>); // GCC runs an additional step, adding 7. Why??
+#endif
+
 ```
+
+The code below implements the Collatz sequence using the new control flow primitives.
+It's the biggest imperative construct I have tested and it shows everything we have looked at so far.
+
+```c++
+#define run_line template <> struct __run_line<decltype([](){})>
+#define RE decltype([](){})
+
+using namespace type_var;
+using namespace ctstd;
+using namespace cexpr_control;
+
+template <class> struct __run_line {};
+
+struct a {}; // the variable of the Collatz sequence
+struct steps {}; // the step count
+struct didnt_reach_one {}; // whether we reached 1
+
+// Initialization
+run_line: Assign<a, _7, RE> {}; 
+run_line: Assign<steps, _0, RE> {};
+run_line: Assign<didnt_reach_one, True, RE> {};
+
+
+// The Collatz step is a single step of the Collatz sequence.
+struct CollatzStep {
+    template <class _>
+    struct __call__ :
+        if_else<                               // if (
+            eq<remainder<a, _2, RE>, _0, RE>,  //     a % 2 == 0) {
+            Assignment<a>,                     //
+            divide<a, _2, RE>,                 //        a =  a / 2;
+            add<mult<a, _3, RE>, _1, RE>,      // } else { a = 3 * a + 1; }
+            RE
+        >,
+        Assign<steps, add<steps, _1, RE>, RE>,         // b = b + 1;
+        Assign<didnt_reach_one, Not<eq<a, _1, RE>, RE>, RE>  // c = (a != 1);
+    {};
+};
+
+// run CollatzStep while didnt_reach_one is True
+run_line: DoWhile<CollatzStep, didnt_reach_one, RE> {};
+
+// It should take 16 steps
+// 7 > 22 > 11 > 34 > 17 > 52 > 26 > 13 > 40 > 20 > 10 > 5 > 16 > 8 > 4 > 2 > 1
+
+#ifdef __clang__
+static_assert(to_bool<eq<a, Integer<1>, RE>>); 
+static_assert(to_bool<eq<steps, Integer<16>, RE>>); // Clang behaves as expected
+#elif __GNUG__
+static_assert(to_bool<eq<a, Integer<2>, RE>>);
+static_assert(to_bool<eq<steps, Integer<18>, RE>>); // wtf happens here?? read the next section...
+#endif
+
+```
+Unfortunately, Clang and GCC compile this code differently. Still, if the code was invalid, it would most likely run into an infinite loop or emit an error, it wouldn't output 18, a number very close to the true result, 16. For some reason, GCC decides to run two additional Collatz steps after a reaches 1.
+This is consistent across all choices of initial values for `a`: the number of steps is always off by two. I attempt to explain why in the next subsection.
 
 ### Template instantiation ordering
 
@@ -485,7 +548,7 @@ Combining these elements, we can construct `Assign` as well. First, we find the 
 On GCC it triggers a warning, because GCC believes that if a class template has non-template friend functions, the programmer probably made an error.
 We silence it with the -Wno-non-template-friend compiler option.
 
-Note that this implementation is deeply inefficient, as performing $N$ assignments requires instantiating $O(N)$ different classes and doing $O(N^2)$ work in total.
+Note that this implementation is deeply inefficient: performing $N$ assignments requires instantiating $O(N)$ different classes and doing $O(N^2)$ work in total.
 
 ## Conclusion
 
