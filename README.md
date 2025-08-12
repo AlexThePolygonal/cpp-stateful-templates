@@ -89,7 +89,7 @@ struct Bar {
 };
 ```
 
-The final argument of all functions, called `class _`, must always be `decltype([](){})`, and it is obligatory to write it out explicitly. Using it as the default argument doesn't work on Clang, and I suspect it's a bug. 
+The final argument of all functions, called `class _`, must always be `decltype([](){})`, and it is obligatory to write it out explicitly. Using it as the default argument doesn't work on Clang even though it should. 
 
 Each occurrence of decltype([](){}) generates a unique type (C++20 Standard, 7.5.5.1), forcing template re-instantiation. If it is not used, the compiler is free to assume that in the sequence `Assign<a, int>, Assign<a, bool>, Assign<a, int>` the third class is already instantiated, because it looks the same as the first.
 
@@ -270,6 +270,7 @@ do {
 It can be implemented using stateful templates as follows:
 
 ```c++
+// boilerplate
 #define run_line template <> struct __run_line<decltype([](){})>
 #define RE decltype([](){})
 
@@ -279,6 +280,7 @@ using namespace cexpr_control;
 
 template <class> struct __run_line {};
 
+// variable init
 struct i {};
 struct sum {};
 struct i_leq_5 {};
@@ -321,6 +323,7 @@ The code below implements the Collatz sequence using the new control flow primit
 It's the biggest imperative construct I have tested and it shows everything we have looked at so far.
 
 ```c++
+// boilerplate
 #define run_line template <> struct __run_line<decltype([](){})>
 #define RE decltype([](){})
 
@@ -330,6 +333,7 @@ using namespace cexpr_control;
 
 template <class> struct __run_line {};
 
+// initialization
 struct a {}; // the variable of the Collatz sequence
 struct steps {}; // the step count
 struct didnt_reach_one {}; // whether we reached 1
@@ -357,7 +361,10 @@ struct CollatzStep {
 };
 
 // run CollatzStep while didnt_reach_one is True
-run_line: DoWhile<CollatzStep, didnt_reach_one, RE> {};
+run_line: DoWhile<
+    CollatzStep, 
+    didnt_reach_one, 
+RE> {};
 
 // It should take 16 steps
 // 7 > 22 > 11 > 34 > 17 > 52 > 26 > 13 > 40 > 20 > 10 > 5 > 16 > 8 > 4 > 2 > 1
@@ -378,7 +385,7 @@ This is consistent across all choices of initial values for `a`: the number of s
 
 Stateful metaprogramming is not an intended feature of C++. The standard doesn't give any information on the order in which different templates have to be instantiated, as it assumes that it cannot matter. Then, while stateful metaprogramming is well-defined, the behaviour of `Assign<>` and `value<>` is UB.
 
-In practice, template instantiation order behaves predictably on each compiler. I have tested it thoroughly on Clang 19.1.1 and GCC 14.2.0, and the behaviour is identical on the preceding versions of the compilers, except that the Clang frontend crashes unpredictably on some of them.
+In practice, template instantiation order behaves predictably on each compiler. I have tested it thoroughly on Clang 19.1.1 and GCC 14.2.0, and the behaviour is identical on the preceding versions of the compilers, except that the Clang frontend crashes unpredictably on some of the earlier versions.
 
 #### Clang is simple
 
@@ -443,9 +450,9 @@ using value = detail::ValueImpl<Var, _>::value;
 ```
 
 Each time the template is instantiated, a new lambda type must be used.
-However, Clang might decide to ignore its obligations and re-use the same lambda type in a new template, probably because the type `ValueImpl<...>::value` does not depend on `_`. I expect this to be a Clang bug, however, I couldn't find a way to trigger it without using stateful loops, and the order of template instantiations in them is technically UB.
+However, Clang might decide to ignore its obligations and re-use the same lambda type in a new template, maybe because the type `ValueImpl<...>::value` does not depend on `_`. I expect this to be a Clang bug, however, I couldn't find a way to trigger it without using stateful loops, and the order of template instantiations in them is UB.
 
-Debugging this has been a nightmare, because, as you might have noticed in the previous section, template instantiations aren't sequenced robustly.
+Debugging this has been a nightmare, because, as you might have noticed in the previous section, template instantiations aren't sequenced in a predictable manner.
 
 ## Implementation details
 
